@@ -11,7 +11,7 @@ Interesting Fields in Various Tables:
 			MilkTimeTodaySS1, MilkTimeTodaySS2, MilkTimeYesterSS1, MilkTimeYesterSS2
 */
 //The different statuses used by Alpro in tblCow
-$status = array('Open','Not Pregnant','Not Pregnant','Not Pregnant','Pregnant','Dry');
+$status = array('Open','Not Pregnant','Not Pregnant','Barren','Pregnant','Dry');
 
 class alpro {
 	function alpro() {
@@ -149,7 +149,39 @@ class alpro {
 	}
 	
 	function fetchRecent($milking,$limit=1) {
-		return $this->queryAll("SELECT * FROM alpro WHERE `date`='".date('Y-m-d')."' ORDER BY ".$milking." DESC LIMIT ".$limit);
+		return $this->queryAll("SELECT * FROM alpro WHERE `date`='".gmdate('Y-m-d')."' ORDER BY ".$milking." DESC LIMIT ".$limit);
+	}
+	
+	//Specify an offset in seconds
+	function fetchOffset($milking,$offset=60,$limit=5) {
+		if(date('I')==0) $offset = -3600 + $offset; 
+		$offset = date('H:i:s',time()-$offset);
+		//echo date('H:i:s',$offset).' '.date('I');
+		return $this->queryAll("SELECT * FROM alpro WHERE `date`='".date('Y-m-d')."' and ".$milking."<='".$offset."' ORDER BY ".$milking." DESC LIMIT ".$limit);
+	}
+	
+	function milkingSpeed() {
+		$milking = $this->currentMilking();
+		$data = $this->fetchRecent($milking,11);
+		$prev = false;
+		$total = 0;
+		$count = 0;
+		foreach($data as $cow) {
+			//print $cow[$milking].'<Br />';
+			$time = strtotime(date('Y-m-d').' '.$cow[$milking]);
+			if($prev!=false) {
+				$diff = $prev - $time;
+				//echo $diff.' ';
+				if($diff > 3 && $diff < 60) {
+					$total = $total + $diff;
+					$count++;
+				}
+			}
+			$prev = $time;
+		}
+		$speed = round($total / $count - 1,0);
+		$cph = round(3600 / $speed,0);
+		echo 'Speed: '.$speed.' seconds per cow. '.$cph.' cows/hour';
 	}
 	
 	
@@ -233,6 +265,15 @@ class alpro {
 		}
 		return $data;
 	}
+	
+	function jogglerServing() {
+		$this->copyLatestMilkingTimes();
+		$data = $this->fetchOffset(date('a'),120,8);
+		foreach($data as $id => $cow) {
+			$data[$id]['info'] = $this->cowInfo($cow['cow']);
+		}
+		return $data;
+	}	
 	
 	function jogglerMilkRecording($all) {
 		$milking = date('a');

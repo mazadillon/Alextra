@@ -2,7 +2,9 @@ body { width: 100%; margin: 1px; padding: none;}
 table { width: 99%; margin: none; padding: none;}
 td { padding: 1%;}
 img { border: none;}
-.open { background-color: #0000FF; font-weight: bold; }
-.unknown { background-color: #FF0000; font-weight: bold; }
+.open, .unknown, .served, .pregnant, .dry { color: white; font-weight: bold;}
+.open { background-color: #0000FF; }
+.unknown { background-color: #FF0000; color: white; font-weight: bold; }
+.served { background-color: yellow; font-weight: bold;}
 .pregnant { background-color: green; font-weight: bold; }
 .dry { background-color: orange; font-weight: bold;}
