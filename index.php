@@ -2,25 +2,12 @@
 include 'alextra.class.php';
 if(!isset($_GET['high']) OR empty($_GET['high'])) $_GET['high'] = false;
 if(!isset($_GET['cow']) OR empty($_GET['cow'])) $_GET['cow'] = false;
-if(!isset($_GET['start']) OR empty($_GET['start'])) $_GET['start'] = date('Y-m-d',strtotime('Yesterday'));
+if(!isset($_GET['start']) OR empty($_GET['start'])) $_GET['start'] = date('Y-m-d');
 if(!isset($_GET['end']) OR empty($_GET['end'])) $_GET['end'] = date('Y-m-d');
 if(!isset($_GET['sort']) OR empty($_GET['sort'])) $_GET['sort'] = false;
 $data = $alpro->filter($_GET['cow'],$_GET['high'],$_GET['start'],$_GET['end'],$_GET['sort']);
+include 'templates/header.htm';
 ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml">
-
-<head>
-<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-<meta http-equiv="content-language" content="en" />
-<title>Alpro Logger</title>
-<link rel="stylesheet" type="text/css" href="style.css" />
-</head>
-
-<body>
-<div id="header">
 <form action="index.php" method="get">
 <table>
 <tr>

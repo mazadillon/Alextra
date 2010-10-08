@@ -27,8 +27,9 @@ if(isset($_GET['all'])) {
 	echo "<div class=\"status\" style=\"background-color:red;color:white;link:white\"><b>All Entries</b><br /><br />(<a href=\"output.php\">Show recent entries</a>)</div>";
 	$list = $alpro->milkRecordingDisplay(false);
 } else {
+	echo "<meta http-equiv=\"refresh\" content=\"5\" />";
 	echo "<div class=\"status\" style=\"background-color:green;color:white;link:white\"><b>Recent Entries</b><br /><br />(<a href=\"output.php?all=true\">Show all entries</a>)</div>";
-	$list = $alpro->milkRecordingDisplay(12);
+	$list = $alpro->milkRecordingDisplay(20);
 }
 echo "Stall : Cow<br />";
 if(is_array($list)) {
@@ -36,5 +37,4 @@ if(is_array($list)) {
 } else {
 	echo 'No data yet';
 }
-echo "<meta http-equiv=\"refresh\" content=\"5\" />";
 ?>

@@ -253,7 +253,20 @@ class alpro {
 	}
 	
 	function cowInfo($cow) {
-		return $this->odbcFetchAll("SELECT CowNo, BreedingState, DateBirth, DateHeat, DateCalving, Lactation, DateInsem From TblCow WHERE CowNo = ".$cow);
+		$info = $this->odbcFetchAll("SELECT CowNo, BreedingState, DateBirth, DateHeat, DateCalving, Lactation, DateInsem From TblCow WHERE CowNo = ".$cow);
+		if(!$info) return false;
+		else {
+			$info['SinceHeat'] = $this->daysSince($info["DateHeat"]);
+			$info['SinceCalving']  = $this->daysSince($info["DateCalving"]);
+			$info['SinceInsem']  = $this->daysSince($info["DateInsem"]);
+			return $info;
+		}
+	}
+	
+	function daysSince($date) {
+			$unix_timestamp = strtotime($date);
+			if($unix_timestamp != 0) return round((date('U',strtotime('1am')) - $unix_timestamp) / 86400,0);
+			else return false;
 	}
 	
 	function jogglerBasic() {
@@ -303,6 +316,7 @@ class alpro {
 	}
 	
 	function filter($cow=false, $activity=false, $start=false, $end=false,$sort=false) {
+		$this->copylatestmilkingtimes();
 		if(!$sort) $sort = 'cow';
 		$query = 'SELECT * FROM alpro WHERE ';
 		if($cow) $query .= "cow='".mysql_real_escape_string($cow)."' AND ";
@@ -326,8 +340,8 @@ class alpro {
 		return true;
 	}
 	
-	function listSortedCows($date) {
-		return $this->queryAll("SELECT * FROM shedding WHERE date='".$date."' ORDER BY time ASC");
+	function listSortedCows($date,$sort='time') {
+		return $this->queryAll("SELECT * FROM shedding WHERE date='".$date."' ORDER BY ".mysql_real_escape_string($sort)." ASC");
 	}
 	
 	function milkRecordingDisplay($limit) {

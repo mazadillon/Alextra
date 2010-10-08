@@ -74,28 +74,23 @@ switch($_GET['a']) {
 	echo $alpro->milkingTotal(date('a')).' cows milked so far.';
 	$alpro->milkingSpeed();
 	echo '<table>';
-	echo '<tr><th>Cow</th><th>Status</th><th>Bulling</th><th>Served</th></tr>';
+	echo '<tr><th>Cow</th><th>DIM</th><th>Bulling</th><th>Served</th></tr>';
 	$data = $alpro->jogglerServing();
 	foreach($data as $id =>	$row) {
 		echo '<tr><td style="font-size: xx-large;">'.$row["cow"].'</td>';
-		echo '<td class="'.strtolower($status[$row['info']['BreedingState']]).'">'.$status[$row['info']["BreedingState"]].' ('.$row['info']["BreedingState"].')</td>';
+		//echo '<td class="'.strtolower($status[$row['info']['BreedingState']]).'">'.$status[$row['info']["BreedingState"]].' ('.$row['info']["BreedingState"].')</td>';
 		
-		$served = strtotime($row['info']["DateHeat"]);
-		if($served != 0) {
-			$diff = (date('U') - $served) / 86400;
-			if(17 < $diff && $diff < 22) echo '<td style="background-color:red;color:white;">';
-			else echo '<td>';
-			echo date('d/m/Y',strtotime($row['info']["DateHeat"])).'    '.round($diff,0).' days ago</td>'."\n";
-		} else echo "<td>&nbsp;</td>";
+		echo '<td>'.$row['info']['SinceCalving'].'</td>';
 		
-		$served = strtotime($row['info']["DateInsem"]);
-		if($served != 0) {
-			$diff = (date('U') - $served) / 86400;
-			if(round($diff,0) == 3) echo '<td style="background-color:green;color:white;">';
-			else echo '<td>';
-			echo date('d/m/Y',strtotime($row['info']["DateInsem"])).'    '.round($diff,0).' days ago</td>'."\n";
-		} else echo "<td>&nbsp;</td>";
-		echo "</tr>\n";
+		if(17 < $row['info']['SinceHeat'] && $row['info']['SinceHeat'] < 23) echo '<td style="background-color:red;color:white;">';
+		else echo '<td>&nbsp;';
+		if($row['info']['SinceHeat'] != false) echo date('d/m/Y',strtotime($row['info']["DateHeat"])).' '.$row['info']['SinceHeat']." days ago\n";
+		echo "</td>";
+		
+		if($row['info']['SinceInsem'] == 3) echo '<td style="background-color:green;color:white;">';
+		else echo '<td>&nbsp;';
+		if($row['info']['SinceInsem']) echo date('d/m/Y',strtotime($row['info']["DateInsem"])).'    '.$row['info']['SinceInsem'].' days ago'."\n";
+		echo "</TD></tr>\n";
 	}
 	break;
 

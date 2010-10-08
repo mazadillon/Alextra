@@ -13,7 +13,7 @@ Interesting Fields in Various Tables:
 
 //$conn=odbc_connect('alpro',"","61016622");
 //$conn = odbc_connect('uniform','matt','silver') or die("Connection error");
-$conn = odbc_connect('uniform','dairyland','TLZMnMAhn3I') or die("Connection error");
+$conn = odbc_connect('uniform','matt','test') or die("Connection error");
 
 $result = odbc_tables($conn) or die(odbc_error());
 while($row = odbc_fetch_array($result)){

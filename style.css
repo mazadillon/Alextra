@@ -4,22 +4,27 @@ body{
 	font-family: Verdana,Arial,sans-serif;
 	font-size: 100%;}
 #header{
-	padding: 1em;
+	padding: none;
 	background-color: gray;
 	color: white;
 	position:fixed;
-	top: 1em;
+	top: 0em;
 	right: 1em;
 	left: 1em;
 	border-radius: 1em;
 	-moz-border-radius: 1em;}
+#menu {
+	padding: none;
+	text-align: center;}
 #header input{
 	font-size: large;
 	display: inline;
-	width: 40%;}
+	padding: none;
+	width: 5em;}
 #header form{
 	display: inline;
 	width: 100%;
+	padding: none;
 	margin: 1em;}
 #header .form {
 	margin: 0px;
@@ -43,3 +48,6 @@ body{
 .highlight{
 	background-color: lightgray;}
 td,tr{margin:none;padding:none;}
+td{
+	padding-left: 1em;
+	padding-right: 1em;}
