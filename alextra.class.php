@@ -93,8 +93,118 @@ class alpro {
 				//echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
 				$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
 			}
-		} else die("Error fetching data");
+		} //else die("Error fetching data");
 		if($sort == 'TblCow.MilkTimeToday1' && date('a') == 'pm') $this->copyMilkingTimesSince('13:00:00');
+	}
+	
+	// Convert date from 25/10/2010 to 20101025
+	function convertDate($date) {
+		$date = explode('/',$date);
+		return $date[2].$date[1].$date[0];
+	}
+	
+	// Find missing cows (and extra cows);
+	function missingCows() {
+		$cows = $this->queryAll("SELECT cow FROM `status` WHERE status != 'Dry'");
+		$error = array();
+		$message = '';
+		foreach($cows as $cow) {
+			$times = $this->queryRow("SELECT * FROM alpro WHERE cow='".$cow['cow']."' AND date='".date('Y-m-d')."'");
+			if(!$times) $errors[] = $cow['cow'];
+		}
+		$extra = $this->queryAll("SELECT status.cow FROM alpro left join status on status.cow = alpro.cow where status='dry' and date='".date('Y-m-d')."'");
+		if(count($errors) > 0) {
+			$message = "The following cows appear not to have been milked today (lost collars?):\n";
+			foreach($errors as $cow) $message .= $cow."\n";
+		}
+		if($extra != false) {
+			$message .= "One or more cows came through the parlour despite being dry:\n";
+			foreach($extra as $cow) $message .= $cow."\n";
+		}
+		if($message != '') {
+			echo "Email sent to office@fordpartners.co.uk containing the following: \n".$message;
+			mail("office@fordpartners.co.uk",'Missing or Extra Cows During Today\'s Milking',$message);
+		}
+	}
+	
+	function importFromUniform() {
+		// Generate a report in Uniform with the following fields in this order:
+		// Number, Date of birth, Last Calved date, Status, Last heat, DIM
+		// Last insemination, Last milk recording yield, dry off date,
+		// %Fat LMT, Last SCC,Pregnancy status, Sex
+		
+		// Use automate to set the report to print via PDF Creator which should
+		// be set to automatically convert to text files, give files a name and
+		// place them in the folder specified below. This function reads the data
+		// and stores it in a mysql database
+		
+		$path = 'C:\documents and settings\ford\my documents\export';
+		$mod = 0;
+		foreach(scandir($path) as $file) {
+			if($file != '.' && $file != '..') {
+				$filemtime = filemtime($path.'\\'.$file);
+				if($filemtime > $mod) {
+					$target = $path.'\\'.$file;
+					$mod = $filemtime;
+				}
+			}
+		}
+		
+		$file = str_replace("\x00",'',substr(file_get_contents($target),37));
+		$file = str_replace("Not pregnant",'Empty',$file);
+		$file = explode('Sex',$file);
+		$target = '';
+		unset($file[0]);
+		foreach($file as $data) {
+			$data = explode('%%[Page: ',$data);
+			$target .= $data[0];
+		}
+		$data = preg_split("/Female/",trim($target));
+		$cow = 0;
+		foreach($data as $line) {
+			$line = preg_split("/[\s]+/",trim($line));
+			$cows[$cow]['number'] = $line[0];
+			$cows[$cow]['dob'] = $this->convertDate($line[1]);
+			$cows[$cow]['calved'] = $this->convertDate($line[2]);
+			$cows[$cow]['status'] = $line[3];
+			if(strpos($line[4],'/') !== false) {
+				$cows[$cow]['heat'] = $this->convertDate($line[4]);
+				$field = 6;
+			} else {
+				$cows[$cow]['heat'] = false;
+				$field = 5;
+			}
+			if(strpos($line[$field],'/') !== false) {
+				$cows[$cow]['service'] = $this->convertDate($line[$field]);
+				$field++;
+			} else {
+				$cows[$cow]['service'] = false;
+			}
+			if(is_numeric($line[$field])) {
+				$cows[$cow]['milk'] = $line[$field];
+				$field++;
+			} else $cows[$cow]['milk'] = false;
+			if(strpos($line[$field],'/') !== false) {
+				$cows[$cow]['dry'] = $this->convertDate($line[$field]);
+				$field++;
+			} else {
+				$cows[$cow]['dry'] = false;
+			}
+			if(is_numeric($line[$field])) {
+				$cows[$cow]['fat'] = $line[$field];
+				$field++;
+			} else $cows[$cow]['fat'] = false;
+			if(is_numeric($line[$field])) {
+				$cows[$cow]['scc'] = $line[$field];
+				$field++;
+			} else $cows[$cow]['scc'] = false;
+			$cows[$cow]['pd'] = $line[$field];
+			$cow++;
+		}
+		mysql_query("TRUNCATE TABLE `status`");
+		foreach($cows as $cow) {
+			if($cow['number'] > 0) mysql_query("INSERT INTO `status` (cow,dob,calved,status,heat,served,milk,dry,fat,scc,pd) VALUES ('".$cow['number']."','".$cow['dob']."','".$cow['calved']."','".$cow['status']."','".$cow['heat']."','".$cow['service']."','".$cow['milk']."','".$cow['dry']."','".$cow['fat']."','".$cow['scc']."','".$cow['pd']."')") or die(mysql_error());
+		}
 	}
 	
 	function copyLatestMilkingTimes() {
@@ -145,7 +255,8 @@ class alpro {
 		$this->copyHistoricMilkingTimes();
 		$this->copyActivityData();
 		$this->sortedCows();
-		if(date('d') == '01') $this->backup_database();
+		$this->importFromUniform();
+		if(date('w') == '1') $this->backup_database();
 	}
 	
 	function fetchRecent($milking,$limit=1) {
@@ -181,7 +292,7 @@ class alpro {
 		}
 		$speed = round($total / $count - 1,0);
 		$cph = round(3600 / $speed,0);
-		echo 'Speed: '.$speed.' seconds per cow. '.$cph.' cows/hour';
+		return 'Speed: '.$speed.' seconds per cow. '.$cph.' cows/hour';
 	}
 	
 	
@@ -253,12 +364,13 @@ class alpro {
 	}
 	
 	function cowInfo($cow) {
-		$info = $this->odbcFetchAll("SELECT CowNo, BreedingState, DateBirth, DateHeat, DateCalving, Lactation, DateInsem From TblCow WHERE CowNo = ".$cow);
+		//$info = $this->odbcFetchAll("SELECT CowNo, BreedingState, DateBirth, DateHeat, DateCalving, Lactation, DateInsem From TblCow WHERE CowNo = ".$cow);
+		$info = $this->queryRow("Select * FROM status WHERE cow = '".$cow."'");
 		if(!$info) return false;
 		else {
-			$info['SinceHeat'] = $this->daysSince($info["DateHeat"]);
-			$info['SinceCalving']  = $this->daysSince($info["DateCalving"]);
-			$info['SinceInsem']  = $this->daysSince($info["DateInsem"]);
+			$info['SinceHeat'] = $this->daysSince($info["heat"]);
+			$info['SinceCalving']  = $this->daysSince($info["calved"]);
+			$info['SinceInsem']  = $this->daysSince($info["served"]);
 			return $info;
 		}
 	}
@@ -281,7 +393,7 @@ class alpro {
 	
 	function jogglerServing() {
 		$this->copyLatestMilkingTimes();
-		$data = $this->fetchOffset(date('a'),120,8);
+		$data = $this->fetchOffset(date('a'),60,8);
 		foreach($data as $id => $cow) {
 			$data[$id]['info'] = $this->cowInfo($cow['cow']);
 		}
