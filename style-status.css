@@ -8,3 +8,8 @@ img { border: none;}
 .inseminated{ background-color: yellow; font-weight: bold;}
 .pregnant { background-color: green; font-weight: bold; }
 .dry { background-color: orange; font-weight: bold;}
+.empty { background-color: red; color: white; font-weight:bold;}
+@page narrow {size: 9cm 18cm}
+@page rotated {size: landscape}
+DIV {page: narrow}
+TABLE {page: rotated}

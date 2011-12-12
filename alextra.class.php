@@ -16,6 +16,8 @@ $status = array('Open','Not Pregnant','Not Pregnant','Barren','Pregnant','Dry');
 class alpro {
 	function alpro() {
 		$this->connect();
+		$this->copyLatestMilkingTimes();
+		$this->sortedCows();
 	}
 
 	function connect() {
@@ -64,11 +66,29 @@ class alpro {
 	
 	//Inserts milking times or updates if data exists already for that day
 	function insertMilkingTime($cow,$date,$am,$pm) {
-		if($this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."'")) {
-			mysql_query("UPDATE alpro SET `am`='".mysql_real_escape_string($am)."', `pm`='".mysql_real_escape_string($pm)."' WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."' LIMIT 1") or die(mysql_error());
-			//echo 'Updated '.mysql_affected_rows().' cows<br />';
-		} else mysql_query("INSERT INTO alpro (`cow`,`date`,`am`,`pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($pm)."')") or die(mysql_error());
-		return true;
+		if($cow > 0) {
+			if(trim($am) != '' OR trim($pm) != '') {
+				if($this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."'")) {
+					mysql_query("UPDATE alpro SET `am`='".mysql_real_escape_string($am)."', `pm`='".mysql_real_escape_string($pm)."' WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."' LIMIT 1") or die(mysql_error());
+					//echo 'Updated '.mysql_affected_rows().' cows<br />';
+				} else mysql_query("INSERT INTO alpro (`cow`,`date`,`am`,`pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($pm)."')") or die(mysql_error());
+				return true;
+			}
+		} else return false;
+	}
+	
+	function alproFields() {
+		$result = odbc_tables($this->odbc) or die(odbc_error());
+		while($row = odbc_fetch_array($result)){
+			//print_r($row);
+			if($row['TABLE_TYPE'] == 'TABLE') {
+				echo $row['TABLE_NAME'].'<br />';
+				$cols = odbc_columns($this->odbc, 'alpro', '', $row['TABLE_NAME']);
+				while($col = odbc_fetch_array($cols)) {
+					echo '-->'.$col['COLUMN_NAME'].'<br />';
+				}
+			}
+		}
 	}
 	
 	function fixtime($date,$seconds) {
@@ -79,8 +99,15 @@ class alpro {
 		}
 	}
 	
+	function resetTimesToday() {
+		mysql_query("DELETE FROM alpro WHERE date='".date('Y-m-d')."'");
+		$this->copyMilkingTimes();
+	}
+	
 	//Copy milking times from the alpro database to mySQL
 	function copyMilkingTimesSince($time) {
+		$this->copyMilkingTimes();
+		/*
 		//echo 'Copying since '.$time.'.<br />';
 		if(date('a',strtotime(date('Y-m-d ').$time)) == 'am') $sort = 'TblCow.MilkTimeToday1';
 		else $sort =  'TblCow.MilkTimeToday2';
@@ -91,10 +118,30 @@ class alpro {
 				$cow['am'] = $this->fixtime($cow['MilkTimeToday1'],$cow['MilkTimeTodaySS1']);
 				$cow['pm'] = $this->fixtime($cow['MilkTimeToday2'],$cow['MilkTimeTodaySS2']);
 				//echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
-				$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
+				if(time() - strtotime($cow['am']) > 3700 AND time() - strtotime($cow['pm']) > 3700) {
+					$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
+				}
 			}
 		} //else die("Error fetching data");
 		if($sort == 'TblCow.MilkTimeToday1' && date('a') == 'pm') $this->copyMilkingTimesSince('13:00:00');
+		*/
+	}
+	
+	function copyMilkingTimes() {
+		$query = "SELECT TblCow.CowNo,TblCow.MilkTimeToday1,TblCow.MilkTimeToday2,TblCowB.MilkTimeTodaySS1,TblCowB.MilkTimeTodaySS2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo WHERE TblCow.CowNo <= 9999";		
+		$data = $this->odbcFetchAll($query);
+		if($data) {
+			foreach($data as $cow) {
+				$cow['am'] = $this->fixtime($cow['MilkTimeToday1'],$cow['MilkTimeTodaySS1']);
+				$cow['pm'] = $this->fixtime($cow['MilkTimeToday2'],$cow['MilkTimeTodaySS2']);
+				//echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
+				if(time() - strtotime($cow['am']) < 3700 AND $cow['pm'] == '') {
+					$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
+				} elseif(strtotime($cow['pm']) < time()) {
+					$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
+				}
+			}
+		}
 	}
 	
 	// Convert date from 25/10/2010 to 20101025
@@ -103,23 +150,61 @@ class alpro {
 		return $date[2].$date[1].$date[0];
 	}
 	
+	function extraCows() {
+		$extra = $this->queryAll("SELECT status.cow FROM alpro left join status on status.cow = alpro.cow where status='dry' and date='".date('Y-m-d')."'");
+		foreach($extra as $cow) {
+			$this->logMissingExtra($cow['cow'],'extra');
+		}
+		$extra = $this->queryAll("SELECT alpro.cow,status.status FROM alpro left join status on status.cow = alpro.cow where date='".date('Y-m-d')."' and status is null");
+		foreach($extra as $cow) {
+			$this->logMissingExtra($cow['cow'],'extra');
+		}
+		return $extra;
+	}
+	
+	function listStock() {
+		return $this->queryAll("SELECT * FROM status ORDER BY cow ASC");
+	}
+	
 	// Find missing cows (and extra cows);
 	function missingCows() {
-		$cows = $this->queryAll("SELECT cow FROM `status` WHERE status != 'Dry'");
-		$error = array();
-		$message = '';
+		$cows = $this->queryAll("SELECT cow FROM `status` WHERE status != 'Dry' AND status!='Youngstock'");
+		$errors = array();
 		foreach($cows as $cow) {
 			$times = $this->queryRow("SELECT * FROM alpro WHERE cow='".$cow['cow']."' AND date='".date('Y-m-d')."'");
-			if(!$times) $errors[] = $cow['cow'];
+			if(!$times) {
+				$errors[] = $cow['cow'];
+				$this->logMissingExtra($cow['cow'],'missing');
+			}
 		}
-		$extra = $this->queryAll("SELECT status.cow FROM alpro left join status on status.cow = alpro.cow where status='dry' and date='".date('Y-m-d')."'");
+		return $errors;
+	}
+	
+	function logMissingExtra($cow,$status) {
+		if(mysql_query("INSERT INTO missing_extra (date,cow,status) VALUES ('".date('Y-m-d')."','".$cow."','".$status."')")) return true;
+		else return false;
+	}
+	
+	function fetchMissingExtra($date) {
+		if(!$date) $date = date('Y-m-d',strtotime('Yesterday'));
+		$this->missingCows();
+		$this->extraCows();
+		$data['date'] = $date;
+		$data['missing'] = $this->queryAll("SELECT * FRom missing_extra WHERE date='".$date."' AND status='missing'");
+		$data['extra'] = $this->queryAll("SELECT * FRom missing_extra WHERE date='".$date."' AND status='extra'");
+		return $data;
+	}
+	
+	function mailMissingExtraCows() {
+		$errors = $this->missingCows();
+		$extra = $this->extraCows();
 		if(count($errors) > 0) {
 			$message = "The following cows appear not to have been milked today (lost collars?):\n";
 			foreach($errors as $cow) $message .= $cow."\n";
 		}
 		if($extra != false) {
 			$message .= "One or more cows came through the parlour despite being dry:\n";
-			foreach($extra as $cow) $message .= $cow."\n";
+			foreach($extra as $cow) $message .= $cow['cow']."\n";
 		}
 		if($message != '') {
 			echo "Email sent to office@fordpartners.co.uk containing the following: \n".$message;
@@ -148,10 +233,10 @@ class alpro {
 					$mod = $filemtime;
 				}
 			}
-		}
-		
+		}		
 		$file = str_replace("\x00",'',substr(file_get_contents($target),37));
 		$file = str_replace("Not pregnant",'Empty',$file);
+		$file = str_replace("Young stock",'Youngstock',$file);
 		$file = explode('Sex',$file);
 		$target = '';
 		unset($file[0]);
@@ -163,16 +248,28 @@ class alpro {
 		$cow = 0;
 		foreach($data as $line) {
 			$line = preg_split("/[\s]+/",trim($line));
-			$cows[$cow]['number'] = $line[0];
-			$cows[$cow]['dob'] = $this->convertDate($line[1]);
-			$cows[$cow]['calved'] = $this->convertDate($line[2]);
-			$cows[$cow]['status'] = $line[3];
-			if(strpos($line[4],'/') !== false) {
-				$cows[$cow]['heat'] = $this->convertDate($line[4]);
-				$field = 6;
+			if(!empty($line[0])) $field = 0;
+			else $field = 1;
+			$cows[$cow]['number'] = $line[$field];
+			$field++;
+			$cows[$cow]['dob'] = $this->convertDate($line[$field]);
+			$field++;
+			if(strpos($line[$field],'/') !== false) {
+				$cows[$cow]['calved'] = $this->convertDate($line[$field]);
+				$field++;
+				$cows[$cow]['status'] = $line[$field];
+				$field++;
+			} else {
+				$cows[$cow]['calved'] = false;
+				$cows[$cow]['status'] = 'Youngstock';
+				$field++;
+			}
+			if(strpos($line[$field],'/') !== false) {
+				$cows[$cow]['heat'] = $this->convertDate($line[$field]);
+				$field = $field + 2;
 			} else {
 				$cows[$cow]['heat'] = false;
-				$field = 5;
+				$field++;
 			}
 			if(strpos($line[$field],'/') !== false) {
 				$cows[$cow]['service'] = $this->convertDate($line[$field]);
@@ -202,9 +299,18 @@ class alpro {
 			$cow++;
 		}
 		mysql_query("TRUNCATE TABLE `status`");
+		$count = 0;
 		foreach($cows as $cow) {
-			if($cow['number'] > 0) mysql_query("INSERT INTO `status` (cow,dob,calved,status,heat,served,milk,dry,fat,scc,pd) VALUES ('".$cow['number']."','".$cow['dob']."','".$cow['calved']."','".$cow['status']."','".$cow['heat']."','".$cow['service']."','".$cow['milk']."','".$cow['dry']."','".$cow['fat']."','".$cow['scc']."','".$cow['pd']."')") or die(mysql_error());
+			if($cow['number'] > 0) {
+				mysql_query("INSERT INTO `status` (cow,dob,calved,status,heat,served,milk,dry,fat,scc,pd) VALUES ('".$cow['number']."','".$cow['dob']."','".$cow['calved']."','".$cow['status']."','".$cow['heat']."','".$cow['service']."','".$cow['milk']."','".$cow['dry']."','".$cow['fat']."','".$cow['scc']."','".$cow['pd']."')") or die(mysql_error());
+				$count++;
+			}
 		}
+		$this->logImport('uniform',$count);
+	}
+	
+	function logImport($type,$count) {
+		if($count > 0) mysql_query("INSERT INTO logs (stamp,type,count) VALUES ('".date('U')."','".$type."','".$count."')") or die(mysql_error());
 	}
 	
 	function copyLatestMilkingTimes() {
@@ -216,6 +322,14 @@ class alpro {
 		$time = mktime($latest[0],$latest[1],$latest[2]);
 		$this->copyMilkingTimesSince(date('H:i:s',$time-60));
 		return true;
+	}
+	
+	function statusSummary() {
+		$data = $this->queryAll("SELECT status,count(*) as cows FROM status GROUP BY status ORDER BY cows DESC");
+		foreach($data as $row) {
+			$return[$row['status']] = $row['cows'];
+		}
+		return $return;
 	}
 	
 	function copyHistoricMilkingTimes() {
@@ -231,6 +345,7 @@ class alpro {
 					echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
 					$this->insertMilkingTime($cow['CowNo'],date('Y-m-d',$date),$cow['am'],$cow['pm']);
 				}
+				$this->logImport('historic',count($data));
 			}
 		}		
 	}
@@ -247,16 +362,32 @@ class alpro {
 				$updated = $updated + mysql_affected_rows();
 			}
 		}
+		$this->logImport('activity',$updated);
 		echo $updated.' activity statuses inserted';
 	}
 	
+	function copyAlproBackups() {
+		$path = date('ymd',strtotime('Yesterday')).'00';
+		$cab = 'C:\\Alpro\\Backup\\'.$path.'.cab';
+		$sb = 'C:\\Alpro\\Backup\\SB'.$path.'S0.crd';
+		if(file_exists($cab)) copy($cab,'D:\\backup\\alpro\\'.$path.'.cab');
+		if(file_exists($sb)) copy($sb,'D:\\backup\\alpro\\SB'.$path.'S0.crd');
+	}
+	
+	function fetchHighAct($date) {
+		if(!$date) $date = date('Y-m-d');
+		return $this->queryAll("SELECT * FROM alpro WHERE date='".$date."' AND activity IS NOT NULL");
+	}
+	
 	function importData() {
-		$this->copyLatestMilkingTimes();
+		$this->importFromUniform();
 		$this->copyHistoricMilkingTimes();
 		$this->copyActivityData();
-		$this->sortedCows();
-		$this->importFromUniform();
-		if(date('w') == '1') $this->backup_database();
+		$this->copyAlproBackups();
+		if(date('a') == 'pm') {
+			$this->mailMissingExtraCows();
+			if(date('w') == '1') $this->backup_database();
+		}
 	}
 	
 	function fetchRecent($milking,$limit=1) {
@@ -271,11 +402,35 @@ class alpro {
 		return $this->queryAll("SELECT * FROM alpro WHERE `date`='".date('Y-m-d')."' and ".$milking."<='".$offset."' ORDER BY ".$milking." DESC LIMIT ".$limit);
 	}
 	
+	function fetchStallOffset($milking,$offset=3,$limit=8) {
+		$return = $this->queryAll("SELECT * FROM alpro WHERE `date`='".date('Y-m-d')."' ORDER BY ".$milking." DESC LIMIT ".$offset.",".$limit);
+		if(!$return) $return = $this->fetchOffset($milking);
+		return $return;
+	}
+	
+	function dataStatus() {
+		$return['status'] = $this->queryOne("SELECT count(*) FROM status");
+		$return['am'] = $this->queryOne("SELECT count(*) FROM alpro WHERE am!= '' and date='".date('Y-m-d')."'");
+		$return['pm'] = $this->queryOne("SELECT count(pm) FROM alpro WHERE pm!='' and date='".date('Y-m-d')."'");
+		return $return;
+	}
+	
+	function cowStatus($cow) {
+		$data = $this->queryRow("SELECT * FROM status WHERE cow='".$cow."'");
+		if(!$data) return false;
+		else {
+			$data['dim'] = round((time() - strtotime($data['calved'])) / 60 / 60 / 24,0);
+			return $data;
+		}
+	}
+	
 	function milkingSpeed() {
 		$milking = $this->currentMilking();
 		$data = $this->fetchRecent($milking,11);
 		$prev = false;
 		$total = 0;
+		$true_total = 0;
+		$true_count = 0;
 		$count = 0;
 		foreach($data as $cow) {
 			//print $cow[$milking].'<Br />';
@@ -287,12 +442,18 @@ class alpro {
 					$total = $total + $diff;
 					$count++;
 				}
+				if($diff > 3) {
+					$true_total = $true_total + $diff;
+					$true_count++;
+				}
 			}
 			$prev = $time;
 		}
-		$speed = round($total / $count - 1,0);
-		$cph = round(3600 / $speed,0);
-		return 'Speed: '.$speed.' seconds per cow. '.$cph.' cows/hour';
+		$seconds = ($total / $count) * 40;
+		$return['platform'] = floor($seconds/60) . ":" . $seconds % 60; 
+		$return['speed'] = round($true_total / $true_count - 1,0);
+		$return['cph'] = round(3600 / $return['speed'],0);
+		return $return;
 	}
 	
 	
@@ -381,9 +542,79 @@ class alpro {
 			else return false;
 	}
 	
+	function milkingSummaries() {
+		$am_data = $this->queryAll("SELECT * FROM alpro WHERE date > '".date('Y-m-d',strtotime('-21 days'))."' AND am != '' AND cow!=0 ORDER BY date DESC,am ASC");
+		$prev = false;
+		$rows = count($am_data);
+		foreach($am_data as $id => $cow) {
+			$milked++;
+			$cow['am_epoch'] = strtotime(date('Y-m-d').' '.$cow['am']);
+			if(!$prev) $prev = $cow;
+			if(!isset($data[$cow['date']])) {
+				//print_r($data);
+				$data[$cow['date']] = $cow;
+				$data[$cow['date']]['am_start'] = $cow['am'];
+				$data[$prev['date']]['am_end'] = $prev['am'];
+				$data[$prev['date']]['am_gaps'] = $gaps;
+				$data[$prev['date']]['am_stops'] = $stops;
+				$data[$prev['date']]['am_milked'] = $milked;
+				$data[$prev['date']]['milked'] = $this->queryOne("select count(*) as milked FROM alpro where date = '".$prev['date']."'");
+				$data[$prev['date']]['am_missed'] = $data[$prev['date']]['milked'] - $milked;
+				$gaps = 0;
+				$stops = 0;
+				$milked = 0;
+				//print_r($data);
+			}
+			$diff = $cow['am_epoch'] - $prev['am_epoch'];
+			if($diff > 120) {
+				$gaps = $gaps + $diff;
+				$stops++;
+			} else {
+				if(!isset($data[$cow['date']]['diff_am'][$diff])) $data[$cow['date']]['diff_am'][$diff] = 1;
+				else $data[$cow['date']]['diff_am'][$diff]++;
+			}
+			$prev=$cow;
+		}
+		$pm_data = $this->queryAll("SELECT * FROM alpro WHERE date > '".date('Y-m-d',strtotime('-21 days'))."' AND pm != '' AND cow!=0 ORDER BY date DESC,pm ASC");
+		$prev = false;
+		$milked = 0;
+		$gaps = 0;
+		$stops = 0;
+		foreach($pm_data as $id => $cow) {
+			$milked++;
+			$cow['pm_epoch'] = strtotime(date('Y-m-d').' '.$cow['pm']);
+			if(!$prev) $prev = $cow;
+			if(!isset($data[$cow['date']]['pm_start'])) {
+				//print_r($data);
+				$data[$cow['date']]['pm_start'] = $cow['pm'];
+				$data[$prev['date']]['pm_end'] = $prev['pm'];
+				$data[$prev['date']]['pm_gaps'] = $gaps;
+				$data[$prev['date']]['pm_stops'] = $stops;
+				$data[$prev['date']]['pm_milked'] = $milked;
+				$data[$prev['date']]['milked'] = $this->queryOne("select count(*) as milked FROM alpro where date = '".$prev['date']."'");
+				$data[$prev['date']]['pm_missed'] = $data[$prev['date']]['milked'] - $milked;
+				$gaps = 0;
+				$stops = 0;
+				$milked = 0;
+			}
+			$diff = $cow['pm_epoch'] - $prev['pm_epoch'];
+			if($diff > 120) {
+				$gaps = $gaps + $diff;
+				$stops++;
+			} elseif($diff > 0) {
+				if(!isset($data[$cow['date']]['diff_pm'][$diff])) $data[$cow['date']]['diff_pm'][$diff] = 1;
+				else $data[$cow['date']]['diff_pm'][$diff]++;
+			}
+			arsort($data[$cow['date']]['diff_am']);
+			arsort($data[$cow['date']]['diff_pm']);
+			$prev=$cow;
+			//print_r($data);
+		}
+		return $data;
+	}
+	
 	function jogglerBasic() {
 		$milking = date('a');
-		$this->copyLatestMilkingTimes();
 		$data = $this->fetchRecent($milking,5);
 		foreach($data as $id => $cow) {
 			$data[$id]['info'] = $this->cowInfo($cow['cow']);
@@ -391,28 +622,35 @@ class alpro {
 		return $data;
 	}
 	
-	function jogglerServing() {
-		$this->copyLatestMilkingTimes();
-		$data = $this->fetchOffset(date('a'),60,8);
+	function jogglerServing($delay=120) {
+		$data = $this->fetchStallOffset(date('a'));
 		foreach($data as $id => $cow) {
 			$data[$id]['info'] = $this->cowInfo($cow['cow']);
 		}
 		return $data;
-	}	
+	}
+
+	function jogglerExit() {
+		$data = $this->fetchStallOffset(date('a'),30);
+		foreach($data as $id => $cow) {
+			$data[$id]['info'] = $this->cowInfo($cow['cow']);
+		}
+		return $data;
+	}
 	
-	function jogglerMilkRecording($all) {
-		$milking = date('a');
-		$this->copyLatestMilkingTimes();
+	function jogglerMilkRecording($all=false) {
+		if(date('a') == 'am') $start = strtotime(date('Y-m-d').' 01:00');
+		else $start = strtotime(date('Y-m-d').' 13:00');
 		$this->recordStalls();
 		if($all) {
-			if($milking == 'am') $start = strtotime('1am');
-			else $start = strtotime('1pm');
 			$data['current'] = $this->queryAll("SELECT * FROM milkrecording WHERE stamp > ".$start." ORDER BY stamp DESC");
 			$data['prev'] = $data['current'];
 		} else {
-			$data['current'] = $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC LIMIT 5");
-			$round = $this->queryOne("SELECT stamp FROM milkrecording WHERE stall='".$data['current'][0]['stall']."' AND stamp < ".$data['current'][0]['stamp']." ORDER BY stamp DESC LIMIT 1");
-			$data['prev'] = $this->queryAll("SELECT * FRom milkrecording WHERE stamp <= ".$round." ORDER BY stamp DESC LIMIT 5"); 
+			$data['current'] = $this->queryAll("SELECT * FROM milkrecording WHERE stamp > ".$start." ORDER BY stamp DESC LIMIT 5");
+			if($data['current']) {
+				$round = $this->queryOne("SELECT stamp FROM milkrecording WHERE stall='".$data['current'][0]['stall']."' AND stamp < ".$data['current'][0]['stamp']." ORDER BY stamp DESC LIMIT 1");
+				$data['prev'] = $this->queryAll("SELECT * FRom milkrecording WHERE stamp <= ".$round." ORDER BY stamp DESC LIMIT 5"); 
+			}
 		}
 		return $data;
 	}
@@ -423,12 +661,12 @@ class alpro {
 		else return 'pm';
 	}
 	
-	function milkingTotal() {
-		return $this->queryOne("SELECT count(*) FROM alpro WHERE date='".date('Y-m-d')."' AND ".$this->currentMilking()." != ''");
+	function milkingTotal($milking = false) {
+		if(!$milking) $milking = $this->currentMilking();
+		return $this->queryOne("SELECT count(*) FROM alpro WHERE date='".date('Y-m-d')."' AND ".$milking." != ''");
 	}
 	
 	function filter($cow=false, $activity=false, $start=false, $end=false,$sort=false) {
-		$this->copylatestmilkingtimes();
 		if(!$sort) $sort = 'cow';
 		$query = 'SELECT * FROM alpro WHERE ';
 		if($cow) $query .= "cow='".mysql_real_escape_string($cow)."' AND ";
@@ -449,7 +687,15 @@ class alpro {
 		foreach($data as $cow) {
 			mysql_query("INSERT IGNORE INTO shedding (cow, date, time) VALUES ('".$cow['CowNo']."','".$cow['LastCutDate']."','".substr($cow['LastCutTime'],11,5)."')") or die(mysql_error());
 		}
+		//$this->logImport('sorting',count($data));
 		return true;
+	}
+	
+	// List of the most recent cows through the shedding gate
+	// For all cows force shedding gate to sort everything then manually disable gate
+	function locomotionList($limit) {
+		$data = $this->queryAll("SELECT * FROM shedding WHERE date='".gmdate('Y-m-d')."' ORDER BY time DESC LIMIT ".$limit);
+		return $data;
 	}
 	
 	function listSortedCows($date,$sort='time') {
@@ -464,6 +710,29 @@ class alpro {
 	function backup_database() {
 		$data = shell_exec('C:\wamp\bin\mysql\mysql5.1.36\bin\mysqldump -u root alpro --skip-opt');
 		file_put_contents('D:/alextra/'.date('Y-m-d').'.sql',$data);
+	}
+	
+	function dodgyCollarsStatus($days) {
+		$data = $this->queryAll("SELECT * FROM status ORDER BY cow ASC");
+		foreach($data as $cow) {
+			$times = $this->queryAll("SELECT * FROM alpro WHERE date > '".date('Y-m-d',strtotime('-'.$days.' days'))."' AND cow='".$cow['cow']."' ORDER BY date ASC");
+			$count = 0;
+			$date = false;
+			//echo $cow['cow'].'<br />';
+			foreach($times as $day) {
+				if($date != false){
+					$diff = round((strtotime($day['date']) - $date) / 86400,0);
+					//echo ' Diff '.$diff.'<br />';
+					if($diff != 1) $count = $count + (2 * $diff);
+				}
+				if($day['am'] == '') $count++;
+				if($day['pm'] == '') $count++;
+				$date = strtotime($day['date']);
+			}
+			if($count != 0) $dodgy[$cow['cow']] = $count;
+		}
+		arsort($dodgy);
+		return($dodgy);
 	}
 	
 	function dodgyCollars($days) {
@@ -510,6 +779,26 @@ class alpro {
 				echo $number.' '.$cows[$cow].'<br />';
 			}
 		}
+	}
+	
+	function fetchLastUpdate() {
+		$data = $this->queryAll("SELECT max(stamp) as stamp,type FROM logs GROUP BY type ORDER BY type ASC");
+		foreach($data as $type) {
+			$return[$type['type']] = $type['stamp'];
+		}
+		return $return;
+	}
+		
+	function dashboard() {
+		// Basic overview of key data
+		$data['status'] = $this->dataStatus();
+		$data['status_summary'] = $this->statusSummary();
+		$data['in_milk'] = $data['status']['status'] - $data['status_summary']['Dry'] - $data['status_summary']['Youngstock'];
+		$data['sorted'] = count($this->listSortedCows(date('Y-m-d')));
+		$data['missing_extra'] = $this->fetchMissingExtra(date('Y-m-d',strtotime('Yesterday')));
+		$data['updates'] = $this->fetchLastUpdate();
+		$data['activity'] = $this->fetchHighAct(false);
+		return $data;
 	}
 }
 $alpro = new alpro();

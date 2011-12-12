@@ -1,53 +1,61 @@
 <?php
-include 'alextra.class.php';
-if(!isset($_GET['high']) OR empty($_GET['high'])) $_GET['high'] = false;
-if(!isset($_GET['cow']) OR empty($_GET['cow'])) $_GET['cow'] = false;
-if(!isset($_GET['start']) OR empty($_GET['start'])) $_GET['start'] = date('Y-m-d');
-if(!isset($_GET['end']) OR empty($_GET['end'])) $_GET['end'] = date('Y-m-d');
-if(!isset($_GET['sort']) OR empty($_GET['sort'])) $_GET['sort'] = false;
-$data = $alpro->filter($_GET['cow'],$_GET['high'],$_GET['start'],$_GET['end'],$_GET['sort']);
-include 'templates/header.htm';
-?>
-<form action="index.php" method="get">
-<table>
-<tr>
-<?php
-echo '<td>Cow: <input type="text" name="cow" value="'.$_GET['cow'].'" /></td>';
-echo '<td>Start Date: <input type="text" name="start" value="'.$_GET['start'].'" /></td>';
-echo '<td>End Date: <input type="text" name="end" value="'.$_GET['end'].'" /></td>';
-echo '<td>High Activity: <input type="checkbox" name="high" value="yes" ';
-if(isset($_GET['high']) && $_GET['high'] == 'yes') echo 'checked="checked" ';
-echo '/></td>';
-echo '<td><select name="sort"><option value="cow">Sort By:</option>';
-echo '<option value="cow">Cow Number</option>';
-echo '<option value="date">Date</option>';
-echo '<option value="am">Milking AM</option>';
-echo '<option value="pm">Milking PM</option>';
-echo '<option value="activity">Activity</option></select>';
-?>
-<td><button type="submit">Filter</button></td>
-</tr>
-</table>
-</form>
-</div>
-<div id="main">
-<table>
-<tr><th>Cow</th><th>Date</th><th>Milking AM</th><th>Milking PM</th><th>Activity Level</th></tr>
-<?php
-for($i=0;$i<count($data);$i++) {
-	if(is_int($i / 2)) echo '<tr class="highlight">';
-	else echo '<tr>';
-	echo '<td><a href="index.php?start=2010-01-01&cow='.$data[$i]['cow'].'">'.$data[$i]['cow'].'</a></td>';
-	echo '<td>'.$data[$i]['date'].'</td>';
-	echo '<td>'.$data[$i]['am'].'</td>';
-	echo '<td>'.$data[$i]['pm'].'</td>';
-	echo '<td>'.$data[$i]['activity'].'</td>';
-	echo "</tr>\n";
+require_once 'alextra.class.php';
+switch($_GET['a']) {
+	case 'backup':
+	$alpro->backup_database();
+	break;
+	
+	case 'uniform':
+	$alpro->importFromUniform();
+	echo 'Imported data from Uniform Agri';
+	break;
+	
+	case 'missing_extra':
+	if(!isset($_GET['date'])) $_GET['date'] = false;
+	$data = $alpro->fetchMissingExtra($_GET['date']);
+	$start = date('Y-m-d',strtotime(date('Y-m-').'01'));
+	echo 'Missing Cows<br />';
+	foreach($data['missing'] as $cow) echo '<a href="filter.php?cow='.$cow['cow'].'&amp;start='.$start.'">'.$cow['cow'].'</a><br />';
+	echo 'Extra Cows<br />';
+	foreach($data['extra'] as $cow) echo '<a href="filter.php?cow='.$cow['cow'].'&amp;start='.$start.'">'.$cow['cow'].'</a><br />';
+	break;
+	
+	case 'alproFields':
+	$alpro->alproFields();
+	break;
+	
+	case 'reset':
+	$alpro->resetTimesToday();
+	break;
+	
+	case 'sorted':
+	if(!isset($_GET['sort']) OR empty($_GET['sort'])) $_GET['sort'] = 'cow';
+	if(!isset($_GET['date'])) $_GET['date'] = date('Y-m-d');
+	$cows = $alpro->listSortedCows($_GET['date'],$_GET['sort']);
+	include 'templates/header.htm';
+	include 'templates/sorted.htm';
+	break;
+	
+	case 'dodgycollars':
+	$dodgy = $alpro->dodgyCollarsStatus(21);
+	$start = date('Y-m-d',strtotime('-21 days'));
+	include 'templates/header.htm';
+	echo '</div><table><tr><th>Cow</th><th>Missed Milkings</th></tr>';
+	foreach($dodgy as $cow => $misses) {
+		echo '<tr><td><a href="filter.php?start='.$start.'&amp;cow='.$cow.'">'.$cow.'</a></td><td>'.$misses.'</td></tr>';
+	}
+	echo '</table>';
+	break;
+	
+	case 'milking_summaries':
+	$data = $alpro->milkingSummaries();
+	include 'templates/header.htm';
+	include 'templates/milking_summaries.htm';
+	break;
+	
+	default:
+	include 'templates/header.htm';
+	$data = $alpro->dashboard();
+	include 'templates/dashboard.htm';
 }
-if($data == false) {
-	echo '<tr><td colspan="5">No Records</td></tr>';
-}
 ?>
-</table>
-</div>
-</html>

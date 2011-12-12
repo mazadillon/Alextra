@@ -1,4 +1,10 @@
 <?php
+/*
+
+This script checks if alprowin.exe is running,
+if it's not then it starts it.
+
+*/
 $info = explode("\n",`tasklist`);
 $running = false;
 foreach($info as $process) {

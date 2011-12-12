@@ -1,13 +1,11 @@
 body{
 	margin:1em;
-	margin-top: 15%;
 	font-family: Verdana,Arial,sans-serif;
 	font-size: 100%;}
 #header{
 	padding: none;
 	background-color: gray;
 	color: white;
-	position:fixed;
 	top: 0em;
 	right: 1em;
 	left: 1em;
