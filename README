@@ -1,0 +1,18 @@
+Alextra
+
+A web based extension to both Delaval's Alpro for Windows and Uniform Agri. Built for use on my dairy
+farm and published for purposes of a backup and in case anyone else finds it useful. It's buggy and badly
+written but it broadly works for what I need it for.
+
+Major features:
+
+-Real time access to data from Uniform Agri and Alpro for Windows
+-Utilises milking times to produce a parlour display with fertility information
+-Can be used to remotely monitor milking progress, speed etc
+-Can identify transponders that are not identifying reliably
+-Provides historical milking times and sorting gate records
+-Can be used as an aid to sorting cows on Delaval sort gate
+-Uses foot trimming records to generate lists of cows due to trim
+-Uses Uniform agri records to identify cows for fresh cow checks or not seen bulling
+-Dashboard shows a breakdown of animals and breeding statuses
+-In depth KPIs for management analysis
