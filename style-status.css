@@ -1,14 +1,16 @@
-body { width: 100%; margin: 1px; padding: none;}
+body { width: 99%; margin: 1px; padding: none; font-size: large;}
 table { width: 99%; margin: none; padding: none;}
 td { padding: 1%;}
 img { border: none;}
 .open, .unknown, .served, .pregnant, .dry { color: white; font-weight: bold;}
 .open { background-color: blue; color: white; font-weight: bold; }
+.empty { background-color: red; color: white; font-weight: bold; }
 .barren { background-color: black; color: white; font-weight: bold; }
 .inseminated{ background-color: yellow; font-weight: bold;}
 .pregnant { background-color: green; font-weight: bold; }
 .dry { background-color: orange; font-weight: bold;}
-.empty { background-color: red; color: white; font-weight:bold;}
+.clock { position: absolute; top: 1px; right: 3px; display:inline; padding: 0px;margin: 0px;}
+.big_clock { font-size: 12em; text-align: center;}
 @page narrow {size: 9cm 18cm}
 @page rotated {size: landscape}
 DIV {page: narrow}
