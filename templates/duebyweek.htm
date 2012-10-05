@@ -1,0 +1,22 @@
+<?php
+echo '<h1>Cows Due Between '.$data['start'].' and '.$data['end'].'</h1>';
+echo 'Total: '.count($data['cows']).'<br />';
+$cows = array();
+$dates = array();
+foreach($data['cows'] as $cow) {
+	$cows[] = $cow['NUMMER'];
+	if(isset($dates[$cow['VERWACHTEKALFDATUM']])) $dates[$cow['VERWACHTEKALFDATUM']]++;
+	else $dates[$cow['VERWACHTEKALFDATUM']] = 1;
+}
+echo '<table border="1"><tr>';
+foreach($dates as $date => $count) {
+	echo '<th>'.$date.'<br />'.date('D',strtotime($date)).'</th>';
+}
+echo '</tr><tr>';
+foreach($dates as $date => $count) {
+	echo '<td>'.$count.'</td>';
+}
+echo '</tr></table>';
+sort($cows);
+foreach($cows as $cow) echo $cow.'<br />';
+?>

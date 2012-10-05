@@ -1,0 +1,13 @@
+<form action="index.php?a=sort" method="post">
+Wait: <input type="text" name="wait" value="1" /><br />
+Days: <input type="text" name="days" value="1" /><br />
+Milking: [<input type="radio" name="milking" value="am" checked="checked" /> AM]
+[PM <input type="radio" name="milking" value="pm" />]<br />
+<?php
+echo count($cows).' cows on list<br />';
+foreach($cows as $cow) {
+	echo '<input type="checkbox" name="cows[]" value="'.$cow.'" checked="true" />'.$cow.'<br />';
+}
+?>
+<input type="submit" value="Sort" />
+</form>

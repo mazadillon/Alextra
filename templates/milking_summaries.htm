@@ -1,0 +1,34 @@
+<?php
+echo '<table border="1"><tr><th>Date</th><th>Cows IDed</th>';
+echo '<th>AM Start</th><th>AM End</th><th>AM Stops (Duration Mins)</th>';
+echo '<th>PM Start</th><th>PM End</th><th>PM Stops (Duration Mins)</th>';
+echo '<th>Missed AM</th><th>Missed PM</th>';
+echo '<th>AM Diffs</th><th>PM Diffs</th></tr>';
+foreach($data as $cow) {
+	if(isset($cow['pm_end'])) {
+		$cow['am_percent'] = round($cow['am_missed'] / $cow['milked'] * 100,0);
+		$cow['pm_percent'] = round($cow['pm_missed']/$cow['milked'] * 100,0);
+		echo '<tr><td>'.date('D j M',strtotime($cow['date'])).'</td><td>'.$cow['milked'].'</td>';
+		echo '<td>'.$cow['am_start'].'</td><td>'.$cow['am_end'].'</td>';
+		echo '<td>'.$cow['am_stops'].' ('.round($cow['am_gaps']/60,0).')</td>';
+		echo '<td>'.$cow['pm_start'].'</td><td>'.$cow['pm_end'].'</td>';
+		echo '<td>'.$cow['pm_stops'].' ('.round($cow['pm_gaps']/60,0).')</td>';
+		echo '<td>'.$cow['am_missed'].' ('.$cow['am_percent'].'%)</td>';
+		echo '<td>'.$cow['pm_missed'].' ('.$cow['pm_percent'].'%)</td>';
+		echo '<td>';
+		$i = 0;
+		foreach($cow['diff_am'] as $sec => $count) {
+			if($i < 5) echo $sec.'/'.round($count/$cow['milked']*100,0).'%<br />';
+			$i++;
+		}
+		echo '</td><td>';
+		$i = 0;
+		foreach($cow['diff_pm'] as $sec => $count) {
+			if($i < 5) echo $sec.'/'.round($count/$cow['milked']*100,0).'%<br />';
+			$i++;
+		}
+		echo '</td></tr>';
+	}
+}
+echo '</table>';
+?>

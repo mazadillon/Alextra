@@ -1,0 +1,60 @@
+<?php
+echo '<h2>Pregnant After Six Weeks</h2>';
+echo '<p>Target Minimum 78%</p>';
+echo '<table border="1"><tr><th>Year</th><th>Eligible</th><th>Pregnant</th><th>Percent</th></tr>';
+foreach($sixweeks as $year => $data) {
+	echo '<tr><td>'.$year.'</td><td>'.$data['eligible'].'</td><td>'.$data['pregnant'].'</td>';
+	echo '<td>'.round($data['pregnant']/$data['eligible']*100,1).'%</td></tr>';
+}
+echo '</table>';
+
+echo '<h2>Submission Rates</h2>';
+echo '<p>Rates are based on a 21 day cycle (i.e. only 1/3 of cows come bulling each week), target 90%</p>';
+echo '<table border="1"><tr><th>Week</th><th>Eligible</th><th>Served</th><th>Rate</th></tr>';
+foreach($sub as $date => $data) {
+	echo '<tr><td>'.$date.'</td><td>'.$data['eligible'].'</td><td>'.$data['served'].'</td>';
+	echo '<td>'.round(($data['served']*3)/$data['eligible']*100,1).'%</td></tr>';
+}
+echo '</table>';
+
+echo '<h2>Subclinical Mastitis</h2>';
+echo '<table border="1">';
+echo '<tr><th>Date</th><th>Cows in Milk</th><th>Average SCC</th><th>Weighted SCC</th><th>Cows over 200</th></tr>';
+foreach($scc as $date) {
+	echo '<tr><td>'.$date['date'].'</td>';
+	echo '<td>'.$date['count'].'</td>';
+	echo '<td>'.round($date['average'],0).'</td>';
+	echo '<td>'.round($date['weighted'],0).'</td>';
+	echo '<td>'.$date['over'].' ('.round($date['over']/$date['count']*100,1).'%)</td>';
+	echo '</tr>';
+}
+echo '</table>';
+
+echo '<h2>Locomotion Scores</h2>';
+echo '<table border="1"><tr><th>Year</th><th>Scored</th><th>Medium</th><th>Severe</th></tr>';
+foreach($loc as $year => $data) {
+	echo '<tr><td>'.$year.'</td><td>'.$data['all'].'</td><td>'.$data['medium'].'</td>';
+	echo '<td>'.$data['high'].' '.round($data['high']/$data['all']*100,1).'%</td></tr>';
+}
+echo '</table>';
+
+echo '<h2>Age Leaving Herd</h2>';
+echo '<table border="1"><tr><th>Year</th><th>Died Age</th><th>Died Lact</th><th>Died Count</th><th>Cull Age</th><th>Cull Lact</th><th>Cull Count</th></tr>';
+foreach($cull as $year => $data) {
+	echo '<tr><td>'.$year.'</td><td>'.round($data['died_age']/365,1).'</td><td>'.round($data['died_lact'],1).'</td><td>'.$data['died_count'].'</td>';
+	echo '<td>'.round($data['sold_age']/365,1).'</td><td>'.round($data['sold_lact'],1).'</td><td>'.$data['sold_count'].'</td></tr>';
+}
+echo '</table>';
+
+
+echo '<h2>First Service Conception Rate</h2>';
+echo '<p>Target minimum 60%</p>';
+echo '<table border="1"><tr><th>Year</th><th>Cows Served</th><th>Cows Held</th><th>Percent</th><th>Heifers Served</th><th>Heifers Held</th><th>Percent</th></tr>';
+foreach($first as $year => $data) {
+	echo '<tr><td>'.$year.'</td><td>'.$data['all'].'</td><td>'.$data['preg'].'</td>';
+	echo '<td>'.round($data['preg']/$data['all']*100,1).'%</td>';
+	echo '<td>'.$data['h_all'].'</td><td>'.$data['h_preg'].'</td>';
+	echo '<td>'.round($data['h_preg']/$data['h_all']*100,1).'%</td></tr>';
+}
+echo '</table>';
+?>

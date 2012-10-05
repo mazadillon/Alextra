@@ -1,0 +1,39 @@
+<?php
+echo '<h1>Herd Summary</h1>';
+echo '<div>';
+echo '<table><tr><th colspan="2">Cow Statuses</th></tr>';
+foreach($data['status_summary'] as $status => $cows) {
+	echo '<tr><td>'.$status.'</td><td>'.$cows.'</td></tr>';
+}
+echo '</table>';
+echo '</div>';
+
+echo '<div>';
+echo '<table><tr><th colspan="2">Milking</th></tr>';
+echo '<tr><td>In Milk</td><td>'.$data['in_milk'].'</td></tr>';
+echo '<tr><td>Milked AM</td><td>'.$data['status']['am'].'</td></tr>';
+echo '<tr><td>Milked PM</td><td>'.$data['status']['pm'].'</td></tr>';
+echo '<tr><td>Sorted Today</td><td><a href="index.php?a=sorted">'.$data['sorted'].'</a></td></tr>';
+echo '<tr><td>High Activity</td>';
+if(!empty($data['activity'])) '<td><a href="filter.php?high=yes">'.count($data['activity']).'</a></td></tr>';
+else echo '<td>None</td></tr>';
+echo '<tr><td>Missed Yesterday</td>';
+if(!empty($data['missing_extra']['missing'])) echo '<td><a href="index.php?a=missing_extra">'.count($data['missing_extra']['missing']).'</a></td></tr>';
+else echo '<td>None</td></tr>';
+echo '<tr><td>Extra Yesterday</td>';
+if(!empty($data['missing_extra']['missing'])) echo '<td><a href="index.php?a=missing_extra">'.count($data['missing_extra']['extra']).'</a></td></tr>';
+else echo '<td>None</td></tr>';
+echo '</table>';
+echo '</div>';
+
+echo '<div>';
+echo '<table><tr><th colspan="2">Database Updates</th></tr>';
+foreach($data['updates'] as $type => $stamp) {
+	echo '<tr><td>'.$type.'</td><td>'.date('Y-m-d H:i:s',$stamp).'</td></tr>';
+}
+echo '</table>';
+echo '</div>';
+//print_r($data);
+?>
+</body>
+</html>

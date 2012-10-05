@@ -1,0 +1,24 @@
+<?php
+include 'templates/header.htm';
+?>
+<h1>Foot Trimming</h1>
+<form action="index.php?a=footTrimming" method="post">
+<?php
+echo '<input type="checkbox" name="routine" value="checked"';
+if($routine) echo ' checked="true"';
+echo ' /><input type="text" name="days" value="'.$days.'" size="3" /> days routine trim ('.date('d/m/Y',strtotime('-'.$days.' days')).'), limit <input type="text" name="routine_limit" size="3"> #'.$routine_count.'<br />
+<input type="checkbox" name="loco" value="checked"';
+if($loco) echo ' checked="true"';
+echo ' /> Trim after locomotion score #'.$loco_count.'<br />
+<input type="checkbox" name="predry" value="checked"';
+if($predry) echo ' checked="true"';
+echo ' /> Trim 80 days before drying off, limit <input type="text" name="predry_limit" size="3"';
+if($predry_limit) echo ' value="'.$predry_limit.'"';
+echo ' /> #'.$predry_count.'<br />
+<input type="checkbox" name="recheck" value="checked"';
+if($recheck) echo ' checked="true"';
+echo ' /> Rechecks #'.$recheck_count.'<br />
+<input type="submit" value="Go" /></form>';
+$cows = $data;
+include 'templates/sort.htm';
+?>

@@ -1,0 +1,33 @@
+<div id="header">
+<form action="index.php" method="get">
+<table>
+<tr>
+<?php
+echo '<td>Date: <input type="text" name="date" value="'.$_GET['date'].'" /></td>';
+echo '<input type="hidden" name="a" value="sorted" />';
+echo '<td><select name="sort"><option value="cow">Sort By:</option>';
+echo '<option value="time">Time</option>';
+echo '<option value="cow">Cow Number</option>';
+echo '</select>';
+?>
+<td><button type="submit">Search</button></td>
+</tr>
+</table>
+</form>
+</div>
+<div id="main">
+<?php
+echo count($cows).' cows sorted on '.date('d/m/Y',strtotime($_GET['date']));
+?>
+<table>
+<tr><th>Cow</th><th>Time</th><th>Reason</th><th>Area</th></tr>
+<?php
+if($cows && !empty($cows)) {
+	foreach($cows as $cow) {
+		echo '<tr><td>'.$cow['cow'].'</td><td>'.$cow['time'].'</td><td>'.$cow['reason']."</td><td>".$cow['area']."</tr>\n";
+	}
+} else echo '<tr><td colspan="2">No cows shed on this date</td></tr>';
+?>
+</table>
+</body>
+</html>
