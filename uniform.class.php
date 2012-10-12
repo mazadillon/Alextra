@@ -128,7 +128,7 @@ class uniform {
 	
 	// Import Johnes test from NML spreadsheet
 	// $data is csv text in following format:
-	// cow, date, result, score
+	// cow, date, score (numeric)
 	//
 	// Update existing treatments if found
 	function importJohnesTest($data) {
@@ -194,6 +194,28 @@ class uniform {
 		return $return;
 	}
 	
+	function johnesHerdwise() {
+		$condition = $this->lookupHealthEvent('Johnes Test');
+		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE STATUS < 9 AND STATUS > 1");
+		$dates = array();
+		$cows = array();
+		foreach($data as $cow) {
+			$johnes = $this->odbcFetchAll("SELECT DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING FROM DIER_ZIEKTE WHERE CODEZIEKTE =".$condition['CODEZIEKTE']." AND DIERID = ".$cow['DIERID']." ORDER BY DATUMZIEKTE ASC");
+			if($johnes) {
+				foreach($johnes as $test) {
+					$cows[$cow['NUMMER']][$test['DATUMZIEKTE']] = $test['TOELICHTING'];
+					echo $cow['NUMMER'].' '.$test['DATUMZIEKTE'].' '.$test['TOELICHTING'].'<br />';
+					if($test['DATUMZIEKTE'] < 20) echo $cow['DIERID'].'<br />';
+					if(!in_array($test['DATUMZIEKTE'],$dates)) $dates[] = $test['DATUMZIEKTE'];
+				}
+			} else $cows[$cow['NUMMER']] = array();
+		}
+		$return['cows'] = $cows;
+		sort($dates);
+		$return['dates'] = $dates;
+		return $return;
+	}
+	
 	// Look up cows from a locomotion scoring that haven't been trimmed recently
 	// $score = Date of locomotion scoring Y-m-d
 	// $before = Ignore cows trimmed this number of days before scoring
@@ -239,7 +261,7 @@ class uniform {
 		return array_unique($cows);
 	}
 	
-	function eligibleToServe($date,$vwp = 40) {
+	function eligibleToServe($date,$vwp = 40,$include_served = true) {
 		$clean = $this->lookupTreatment('Vet Check OK');
 		$clean = $clean['CODEBEHANDELING'];
 		$start = strtotime($date) - ($vwp * 60 * 60 * 24);
@@ -247,14 +269,15 @@ class uniform {
 		$cows = array();
 		foreach($to_check as $cow) {
 			$check_clean = $this->cowTreatment($clean,$cow['DIERID'],$cow['LAATSTEKALFDATUM'],date('Y-m-d'));
-			if($check_clean) $cows[] = $cow['NUMMER'];
+			if($check_clean && $include_served) $cows[] = $cow['NUMMER'];
+			elseif($check_clean && $cow['STATUS'] != 3) $cows[] = $cow['NUMMER'];
 		}
 		sort($cows);
 		return $cows;
 	}
 	
 	function notSeenBulling($date,$days=30) {
-		$start = $this->eligibleToServe($date,30);
+		$start = $this->eligibleToServe($date,30,false);
 		$before = date('Y-m-d',strtotime($date) - ($days * 86400));
 		$return['eligible'] = count($start);
 		$return['cows'] = array();
@@ -263,14 +286,12 @@ class uniform {
 		$cystic = $this->lookupHealthEvent('Cystic Ovaries');
 		$cystic = $cystic['CODEZIEKTE'];
 		foreach($start as $cow) {
-			if($cow['STATUS'] != 3) {
-				$dierid = $this->dierid($cow);
-				$check = $this->odbcFetchAll("SELECT * FROM DIER WHERE NUMMER=".$cow." AND LAATSTETOCHTDATUM >= '".$before."'");
-				$cidr_before = date('Y-m-d',strtotime('-14 days'));
-				$cidr_in = $this->cowHealth($cidr_sync,$dierid,$cidr_before,date('Y-m-d'));
-				$is_cystic = $this->cowHealth($cystic,$dierid,$cidr_before,date('Y-m-d'));
-				if(!$check && !$cidr_in && !$is_cystic) $return['cows'][] = $cow;
-			}
+			$dierid = $this->dierid($cow);
+			$check = $this->odbcFetchAll("SELECT * FROM DIER WHERE NUMMER=".$cow." AND LAATSTETOCHTDATUM >= '".$before."'");
+			$cidr_before = date('Y-m-d',strtotime('-14 days'));
+			$cidr_in = $this->cowHealth($cidr_sync,$dierid,$cidr_before,date('Y-m-d'));
+			$is_cystic = $this->cowHealth($cystic,$dierid,$cidr_before,date('Y-m-d'));
+			if(!$check && !$cidr_in && !$is_cystic) $return['cows'][] = $cow;
 		}
 		return $return;
 	}
@@ -338,6 +359,28 @@ class uniform {
 			return $cows;
 		} else return false;
 		//cow,dob,calved,status,heat,served,milk,dry,fat,scc,pd
+	}
+	
+	function panelStatus($number) {
+		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE DIER.STATUS < 9 AND NUMMER = ".$number);
+		if($data) {
+			$cow['cow'] = $data['NUMMER'];
+			$cow['name'] = $data['NAAM'];
+			$cow['status'] = $this->config['status'][$data['STATUS']];
+			$cow['dim'] = round((time() - strtotime($data['LAATSTEKALFDATUM'])) / 86400,0);
+			if(strtotime($data['LAATSTEINSDATUM']) > strtotime($data['LAATSTETOCHTDATUM'])) {
+				$cow['heat'] = $data['LAATSTEINSDATUM'];
+				$sire_name = $this->odbcFetchAll("SELECT NAAM FROM DIER WHERE DIERID = ".$data['LAATSTEINSID']);
+				if($sire_name) $cow['bull'] = $sire_name['NAAM'];
+				else $sire_name = false;
+			} else {
+				$cow['heat'] = $data['LAATSTETOCHTDATUM'];
+				$cow['bull'] = false;
+			}
+			if(strtotime($cow['heat']) != 0) $cow['SinceHeat'] = round((time() - strtotime($cow['heat'])) / 86400,0);
+			else $cow['SinceHeat'] = false;
+		} else $cow['cow'] = $number;
+		return $cow;
 	}
 	
 	function dierid($cow) {

@@ -209,6 +209,11 @@ switch($_GET['a']) {
 	break;
 	
 	case 'johnes':
+	$data = $uni->johnesHerdwise();
+	include 'templates/johnes_herdwise.htm.php';
+	break;
+	
+	case 'johnes_old':
 	$data = $uni->johnesCows();
 	echo '<h1>High '.count($data['high']).'</h1>';
 	foreach($data['high'] as $cow => $count) {
@@ -250,7 +255,7 @@ switch($_GET['a']) {
 	$conditions[] = $uni->lookupHealthEvent('Ketosis');
 	$conditions[] = $uni->lookupHealthEvent('LDA');
 	$conditions[] = $uni->lookupHealthEvent('Lame');
-	$data = $uni->calvingQsum('2011-06-01','2011-10-01',30,$conditions);
+	$data = $uni->calvingQsum('2012-06-01','2012-10-01',30,$conditions);
 	echo '<table border="1"><tr><th>Cow</th><th>Status</th><th>Calving Date</th><th>Calving Ease</th>';
 	foreach($conditions as $cond) {
 		echo '<th>'.$cond['OMSCHRIJVING'].'</th>';
@@ -392,7 +397,7 @@ switch($_GET['a']) {
 	$dodgy = $alpro->dodgyCollarsStatus(10);
 	$start = date('Y-m-d',strtotime('-10 days'));
 	include 'templates/header.htm';
-	echo '</div><table><tr><th>Cow</th><th>Missed Milkings</th></tr>';
+	echo '</div>Missed milkings since '.$start.'<table><tr><th>Cow</th><th>Missed Milkings</th></tr>';
 	foreach($dodgy as $cow => $misses) {
 		echo '<tr><td><a href="filter.php?start='.$start.'&amp;cow='.$cow.'">'.$cow.'</a></td><td>'.$misses.'</td></tr>';
 	}

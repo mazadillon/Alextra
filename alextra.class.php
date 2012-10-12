@@ -739,7 +739,7 @@ class alpro {
 		$data = $this->fetchRecent($milking,10);
 		if($data) {
 			foreach($data as $id => $cow) {
-				$data[$id]['info'] = $this->cowInfo($cow['cow']);
+				$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
 			}
 			return $data;
 		} else return false;
@@ -854,7 +854,7 @@ class alpro {
 					if($day['pm'] == '') $count++;
 					$date = strtotime($day['date']);
 				}
-				if($count != 0) $dodgy[$cow['cow']] = $count;
+				if($count > 1) $dodgy[$cow['cow']] = $count;
 			}
 		}
 		arsort($dodgy);
