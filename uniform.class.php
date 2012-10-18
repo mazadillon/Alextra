@@ -170,49 +170,60 @@ class uniform {
 	function johnesCows() {
 		$condition = $this->lookupHealthEvent('Johnes Test');
 		$data = $this->odbcFetchAll("SELECT DIER.NUMMER,DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING FROM DIER JOIN DIER_ZIEKTE ON DIER.DIERID = DIER_ZIEKTE.DIERID WHERE CODEZIEKTE =".$condition['CODEZIEKTE']." AND DIER.STATUS < 9");
-		$med = array();
-		$high = array();
-		$low = array();
+		$johnes = array();
 		foreach($data as $test) {
-			if($test['TOELICHTING'] >= 20 && $test['TOELICHTING'] <30) {
-				if(isset($med[$test['NUMMER']])) $med[$test['NUMMER']]++;
-				else $med[$test['NUMMER']] = 1;
-			} elseif($test['TOELICHTING'] >= 30) {
-				if(isset($high[$test['NUMMER']])) $high[$test['NUMMER']]++;
-				else $high[$test['NUMMER']] = 1;
-			} else {
-				if(isset($low[$test['NUMMER']])) $low[$test['NUMMER']]++;
-				else $low[$test['NUMMER']] = 1;
+			if($test['TOELICHTING'] >= 20) {
+				if(!in_array($test['NUMMER'],$johnes)) $johnes[] = $test['NUMMER'];
 			}
 		}
-		ksort($high);
-		ksort($med);
-		ksort($low);
-		$return['high'] = $high;
-		$return['med'] = $med;
-		$return['low'] = $low;
-		return $return;
+		sort($johnes);
+		return $johnes;
 	}
 	
 	function johnesHerdwise() {
 		$condition = $this->lookupHealthEvent('Johnes Test');
-		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE STATUS < 9 AND STATUS > 1");
+		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE STATUS < 9 AND STATUS > 1 AND LACTATIENUMMER >= 1");
 		$dates = array();
 		$cows = array();
 		foreach($data as $cow) {
+			$group = 1;
 			$johnes = $this->odbcFetchAll("SELECT DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING FROM DIER_ZIEKTE WHERE CODEZIEKTE =".$condition['CODEZIEKTE']." AND DIERID = ".$cow['DIERID']." ORDER BY DATUMZIEKTE ASC");
 			if($johnes) {
+				if(isset($johnes['DATUMZIEKTE'])) $johnes = array($johnes);
 				foreach($johnes as $test) {
-					$cows[$cow['NUMMER']][$test['DATUMZIEKTE']] = $test['TOELICHTING'];
-					echo $cow['NUMMER'].' '.$test['DATUMZIEKTE'].' '.$test['TOELICHTING'].'<br />';
-					if($test['DATUMZIEKTE'] < 20) echo $cow['DIERID'].'<br />';
+					$cows[$cow['NUMMER']]['tests'][$test['DATUMZIEKTE']] = $test['TOELICHTING'];
+					//echo $cow['NUMMER'].' '.$test['DATUMZIEKTE'].' '.$test['TOELICHTING'].'<br />';
 					if(!in_array($test['DATUMZIEKTE'],$dates)) $dates[] = $test['DATUMZIEKTE'];
 				}
-			} else $cows[$cow['NUMMER']] = array();
+				// test if in one of the high groups
+				if($test['TOELICHTING'] >= 20) {
+					// test if any previous tests were also positive
+					foreach($johnes as $test) {
+						if($test['TOELICHTING'] >= 20) $group = 5;
+					}
+					// if not then group is 4
+					if($group == 1) $group = 4;
+				} else {
+					// Check previous tests for positive result
+					foreach($johnes as $id => $test) {
+						if($id > count($johnes) - 4 && $test['TOELICHTING'] >= 20) $group = 2;
+					}
+					// if no positives found and more than one test negative it's group 0
+					if($group == 1 && count($johnes) > 1) $group = 0;
+				}
+				$groups[$cow['NUMMER']] = $group;
+			} else {
+				$cows[$cow['NUMMER']] = array();
+				$groups[$cow['NUMMER']] = 6;
+			}
 		}
 		$return['cows'] = $cows;
 		sort($dates);
+		ksort($cows);
+		arsort($groups);
+		$return['groups'] = $groups;
 		$return['dates'] = $dates;
+		$return['simple'] = $this->johnesCows();
 		return $return;
 	}
 	
@@ -246,7 +257,7 @@ class uniform {
 		$clean = $this->lookupTreatment('Vet Check OK');
 		$clean = $clean['CODEBEHANDELING'];
 		$cows = array();
-		$to_check = $this->odbcFetchAll("SELECT * FROM DIER WHERE STATUS = 2 AND LAATSTEKALFDATUM < '".date('Y-m-d')."' ORDER BY LAATSTEKALFDATUM ASC");
+		$to_check = $this->odbcFetchAll("SELECT * FROM DIER WHERE (STATUS = 2 OR STATUS = 3) AND LAATSTEKALFDATUM < '".date('Y-m-d')."' ORDER BY LAATSTEKALFDATUM ASC");
 		foreach($to_check as $cow) {
 			if(count($cows) < $limit) {
 				$dim = (time() - strtotime($cow['LAATSTEKALFDATUM'])) / 86400;
@@ -276,7 +287,7 @@ class uniform {
 		return $cows;
 	}
 	
-	function notSeenBulling($date,$days=30) {
+	function notSeenBulling($date,$days=25) {
 		$start = $this->eligibleToServe($date,30,false);
 		$before = date('Y-m-d',strtotime($date) - ($days * 86400));
 		$return['eligible'] = count($start);

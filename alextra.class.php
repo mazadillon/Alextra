@@ -748,7 +748,7 @@ class alpro {
 	function jogglerServing($delay=120) {
 		$data = $this->fetchStallOffset(date('a'));
 		foreach($data as $id => $cow) {
-			$data[$id]['info'] = $this->cowInfo($cow['cow']);
+			$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
 		}
 		return $data;
 	}
