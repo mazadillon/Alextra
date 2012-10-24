@@ -287,7 +287,7 @@ class uniform {
 		return $cows;
 	}
 	
-	function notSeenBulling($date,$days=25) {
+	function notSeenBulling($date,$days=21) {
 		$start = $this->eligibleToServe($date,30,false);
 		$before = date('Y-m-d',strtotime($date) - ($days * 86400));
 		$return['eligible'] = count($start);
@@ -324,6 +324,7 @@ class uniform {
 				if(!$trimmed) $cows[] = $cow['NUMMER'];
 			}
 		}
+		$cows = array_unique($cows);
 		$due = $this->odbcFetchAll("SELECT DIER.NUMMER,DIER.DIERID,DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING,DIER_ZIEKTE.CODEZIEKTE FROM DIER_ZIEKTE JOIN DIER ON DIER_ZIEKTE.DIERID=DIER.DIERID WHERE CODEZIEKTE=".$recheck." AND DATUMZIEKTE > '".date('Y/m/d',strtotime('-1 year'))."' AND DIER.STATUS < 8 ORDER BY DIERID ASC,DATUMZIEKTE DESC");
 		$last = false;
 		if($due) {

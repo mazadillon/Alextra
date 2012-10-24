@@ -51,6 +51,8 @@ class alpro {
 		else return false;
 	}
 	
+	// Open DB in MS Access under exlusive use, then unset password
+	// Use mdbtocsv.exe to convert
 	function csvSearch($search) {
 		$path = 'C:\Documents and Settings\Ford\My Documents\alpro-mdb-csv';
 		$files = scandir($path);
@@ -98,6 +100,24 @@ class alpro {
 	
 	function actTag($cow) {
 		return $this->odbcFetchAll("SELECT * FROM TblCowAct WHERE CowNo=".$cow);
+	}
+	
+	function fetchCutIDTimes() {
+		$times = $this->odbcFetchAll("SELECT cowNo,LastCutIDTime,LastCutIDTimeSS FROM TblCowB");
+		foreach($times as $cow) {
+			if(empty($cow['LastCutIDTime'])) $time = false;
+			else $time = substr($cow['LastCutIDTime'],11,5).':'.str_pad((int) $cow['LastCutIDTimeSS'],2,"0",STR_PAD_LEFT);
+			echo $cow['cowNo'].' '.$time.'<br />';
+			if($time) {
+				if(!$this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."'")) {
+					mysql_query("INSERT INTO alpro (cow,date) VALUES ('".mysql_real_escape_string($cow['cowNo'])."','".mysql_real_escape_string(date('Y-m-d'))."')");
+				}			
+				if(substr($time,0,2) < 13) $apm = 'am';
+				else $apm = 'pm';
+				echo "UPDATE alpro SET `sort_id_".$apm."`='".mysql_real_escape_string($time)."' WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."' LIMIT 1<br />";
+				mysql_query("UPDATE alpro SET `sort_id_".$apm."`='".mysql_real_escape_string($time)."' WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."' LIMIT 1") or die(mysql_error());	
+			}
+		}
 	}
 	
 	function fedYesterday() {
@@ -183,7 +203,7 @@ class alpro {
 	}
 	
 	function copyMilkingTimes() {
-		$query = "SELECT TblCow.CowNo,TblCow.MilkTimeToday1,TblCow.MilkTimeToday2,TblCowB.MilkTimeTodaySS1,TblCowB.MilkTimeTodaySS2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo WHERE TblCow.CowNo <= 9999";		
+		$query = "SELECT TblCow.CowNo,TblCow.MilkTimeToday1,TblCow.MilkTimeToday2,TblCowB.MilkTimeTodaySS1,TblCowB.MilkTimeTodaySS2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo";		
 		$data = $this->odbcFetchAll($query);
 		if($data) {
 			foreach($data as $cow) {
@@ -479,11 +499,12 @@ class alpro {
 	
 	function importData() {
 		$this->importFromUniform();
-		$this->cullsToAlpro();
 		$this->copyHistoricMilkingTimes();
 		$this->copyActivityData();
-		$this->copyAlproBackups();
-		if(date('a') == 'pm') {
+		$this->fetchCutIDTimes();
+		if(date('a') == 'pm' && date('H') == '22') {
+			$this->cullsToAlpro();
+			$this->copyAlproBackups();
 			$this->mailMissingExtraCows();
 			$this->importCake();
 			if(date('w') == '1') {
@@ -666,6 +687,9 @@ class alpro {
 	function milkingSummaries() {
 		$am_data = $this->queryAll("SELECT * FROM alpro WHERE date > '".date('Y-m-d',strtotime('-21 days'))."' AND am != '' AND cow!=0 ORDER BY date DESC,am ASC");
 		$prev = false;
+		$gaps = 0;
+		$stops = 0;
+		$milked = 0;
 		$rows = count($am_data);
 		foreach($am_data as $id => $cow) {
 			$milked++;
@@ -735,22 +759,34 @@ class alpro {
 	}
 	
 	function jogglerBasic() {
-		$milking = date('a');
+		$milking = $this->currentMilking();
 		$data = $this->fetchRecent($milking,10);
 		if($data) {
 			foreach($data as $id => $cow) {
 				$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
+				$data[$id]['milking'] = $milking;
 			}
 			return $data;
 		} else return false;
 	}
 	
 	function jogglerServing($delay=120) {
-		$data = $this->fetchStallOffset(date('a'));
+		$milking = $this->currentMilking();
+		$data = $this->fetchStallOffset($milking);
 		foreach($data as $id => $cow) {
 			$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
+			$data[$id]['milking'] = $milking;
 		}
 		return $data;
+	}
+	
+	function fetchIDTimes() {
+		$data = $this->odbcFetchAll("SELECT CowNo,IDTimeTodayMM2,IDTimeTodaySS2 FROM TblCowB ORDER BY IDTimeTodayMM2 DESC");
+		foreach($data as $cow) {
+			$cows[$this->fixtime($cow['IDTimeTodayMM2'],$cow['IDTimeTodaySS2'])] = $cow['CowNo'];
+		}
+		krsort($cows);
+		return $cows;
 	}
 
 	function jogglerExit() {
@@ -780,7 +816,7 @@ class alpro {
 	
 	function currentMilking() {
 		$pm = $this->queryOne("SELECT max(pm) FROM alpro WHERE date='".date('Y-m-d')."'");
-		if($pm=='') return 'am';
+		if(!$pm OR $pm=='') return 'am';
 		else return 'pm';
 	}
 	

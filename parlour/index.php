@@ -48,7 +48,7 @@ switch($_GET['a']) {
 	break;
 	
 	case 'milking':
-	$milking_status = $alpro->milkingTotal(date('a'));
+	$milking_status = $alpro->milkingTotal($alpro->currentMilking());
 	$milking_speed = $alpro->milkingSpeed();
 	$data = $alpro->jogglerBasic();
 	$sorted = $alpro->sortedRecent();
@@ -63,7 +63,7 @@ switch($_GET['a']) {
 	break;
 	
 	case 'serving':
-	$milking_status = $alpro->milkingTotal(date('a'));
+	$milking_status = $alpro->milkingTotal($alpro->currentMilking());
 	$milking_speed = $alpro->milkingSpeed();
 	$data = $alpro->jogglerServing(20);
 	include 'milking_panel.htm.php';

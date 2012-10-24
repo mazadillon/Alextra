@@ -1,6 +1,8 @@
 <?php
+ERROR_REPORTING('E_NONE');
 include 'reload.htm';
-if(is_array($data) AND (time() - strtotime($data[0][date('a')]) < 7200)) {
+//print_r($data);
+if(is_array($data) AND (time() - strtotime($data[0][$data[0]['milking']]) < 7200)) {
 	echo $milking_status.' cows milked so far. ';
 	echo $milking_speed['speed'].' seconds per cow. '.$milking_speed['cph'].' cows per hour. Rotation time '.$milking_speed['platform'];
 	if(isset($sorted) && $sorted) echo '<div style="font-size:2em;border:1px dashed black;background-color:yellow;padding:5px;text-align:center;">Cow '.$sorted['cow'].' sorted, total of '.$sorted['total'].' this milking.</div>';

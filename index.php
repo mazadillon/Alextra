@@ -15,9 +15,9 @@ switch($_GET['a']) {
 	break;
 	
 	case 'csvSearch':
-	$alpro->csvSearch('1');
+	$alpro->csvSearch('2');
 	break;
-	
+		
 	case 'cidrSync':
 	$sync = $uni->lookupHealthEvent('CIDR Synchronise');
 	$cows = $uni->healthReporting($sync['CODEZIEKTE'],'2012-09-23','2012-09-25');
@@ -242,6 +242,25 @@ switch($_GET['a']) {
 	foreach($data['high'] as $cow => $count) echo $cow.', ';
 	echo '<br />Medium:<br />';
 	foreach($data['med'] as $cow => $count) echo $cow.', ';
+	break;
+	
+	case 'idtimes':
+	include 'parlour/reload.htm';
+	echo '<table border="1"><tr><td>';
+	$data = $alpro->fetchRecent('pm',20);
+	$buffer = 0;
+	$flag = false;
+	foreach($alpro->fetchIDTimes() as $time => $cow) {
+		if($cow != $data[0]['cow'] && !$flag) $buffer++;
+		else $flag = true;
+		echo $cow.' '.$time.'<br />';
+	}
+	echo '</td><td valign="top">';
+	$data = $alpro->fetchRecent('pm',20);
+	for($i = 0;$i < $buffer;$i++) echo '<br />';
+	foreach($data as $cow) echo $cow['cow'].' '.$cow['pm'].'<br />';
+	//print_r($data);
+	echo '</td></tr></table>';
 	break;
 	
 	case 'calvingQsum':
