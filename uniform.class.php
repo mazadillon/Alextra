@@ -5,8 +5,9 @@ require_once('alextra.class.php');
 class uniform {
 	function uniform() {
 		global $alpro;
+		$this->config =& $alpro->config;
 		$this->alpro = $alpro;
-		$this->unidb = odbc_connect('uniform','','') or die(odbc_error());
+		$this->unidb = odbc_connect('uniform',$this->config['uniform']['user'],$this->config['uniform']['password']) or die(odbc_error());
 		if(!$this->unidb) exit("Connection Failed: " . $this->unidb);
 		$this->config['status'] = array(1=>'Youngstock',2=>'Open',3=>'Inseminated',4=>'Empty',
 		5=>'Pregnant',6=>'Barren',7=>'Aborted',8=>'Dry',9=>'Sold',10=>'Died',''=>'Unknown');

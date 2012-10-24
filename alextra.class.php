@@ -17,6 +17,8 @@ $status = array('Open','Not Pregnant','Not Pregnant','Barren','Pregnant','Dry');
 
 class alpro {
 	function alpro() {
+		include 'alextra_config.php';
+		$this->config = $config;
 		$this->connect();
 		$this->copyLatestMilkingTimes();
 		$this->sortedCows();
@@ -25,7 +27,7 @@ class alpro {
 	}
 
 	function connect() {
-		$this->odbc = odbc_connect('alpro',"","");
+		$this->odbc = odbc_connect('alpro',$this->config['alpro']['user'],$this->config['alpro']['password']);
 		if(!$this->odbc) exit("Connection Failed: " . $this->odbc);
 		$this->mysql = mysql_connect('localhost','root','');
 		if(!$this->mysql) exit("mySQL connection failed");
@@ -107,14 +109,12 @@ class alpro {
 		foreach($times as $cow) {
 			if(empty($cow['LastCutIDTime'])) $time = false;
 			else $time = substr($cow['LastCutIDTime'],11,5).':'.str_pad((int) $cow['LastCutIDTimeSS'],2,"0",STR_PAD_LEFT);
-			echo $cow['cowNo'].' '.$time.'<br />';
 			if($time) {
 				if(!$this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."'")) {
 					mysql_query("INSERT INTO alpro (cow,date) VALUES ('".mysql_real_escape_string($cow['cowNo'])."','".mysql_real_escape_string(date('Y-m-d'))."')");
 				}			
 				if(substr($time,0,2) < 13) $apm = 'am';
 				else $apm = 'pm';
-				echo "UPDATE alpro SET `sort_id_".$apm."`='".mysql_real_escape_string($time)."' WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."' LIMIT 1<br />";
 				mysql_query("UPDATE alpro SET `sort_id_".$apm."`='".mysql_real_escape_string($time)."' WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."' LIMIT 1") or die(mysql_error());	
 			}
 		}
