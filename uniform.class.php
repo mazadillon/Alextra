@@ -93,11 +93,18 @@ class uniform {
 	
 	function fertilityBreakdown() {
 		$data['round_year'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE (status=2 OR status=3 OR status=4 OR status=7) AND LAATSTEKALFDATUM < '2012-01-01'");
+		$data['round_year_served'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE status=3 AND LAATSTEKALFDATUM < '2012-01-01'");
 		$data['round_spring'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE (status=2 OR status=3 OR status=4 OR status=7) AND LAATSTEKALFDATUM >= '2012-01-01' AND LAATSTEKALFDATUM < '2012-07-01'");
+		$data['round_spring_served'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE status=3 AND LAATSTEKALFDATUM >= '2012-01-01' AND LAATSTEKALFDATUM < '2012-07-01'");
 		$data['summer'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE (status=2 OR status=3 OR status=4 OR status=7)AND LACTATIENUMMER > 0 AND LAATSTEKALFDATUM >= '2012-07-01'");
+		$data['summer_served'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE status=3 AND LACTATIENUMMER > 0 AND LAATSTEKALFDATUM >= '2012-07-01'");
 		$data['heifers'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE (status=1 OR status=3 OR status=4) AND LACTATIENUMMER IS NULL AND GEBOORTEDATUM <= '2011-11-01'");
+		$data['heifers_served'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE status=3 AND LACTATIENUMMER IS NULL AND GEBOORTEDATUM <= '2011-11-01'");
 		$data['barren'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE status=6 AND LACTATIENUMMER > 0");
-		$data['pregnant'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE status=5 AND LACTATIENUMMER > 0");
+		$data['cows_pregnant_spring'] = $this->odbcFetchAll("SELECT count(due.maxdate) FROM (SELECT max(DATUMBEGIN) as maxdate FROM DIER JOIN DIER_VOORTPLANTING ON DIER.DIERID = DIER_VOORTPLANTING.DIERID WHERE DIER_VOORTPLANTING.VOORTPLANTINGCODE > 1 AND DIER_VOORTPLANTING.VOORTPLANTINGCODE < 6 AND DIER_VOORTPLANTING.INS_OK = 1 AND DATUMBEGIN < '2012-10-01' AND DATUMBEGIN >= '2012-03-01' AND DIER.STATUS < 9 AND DIER.LACTATIENUMMER > 0 GROUP BY DIER.DIERID) as due");
+		$data['heifers_pregnant_spring'] = $this->odbcFetchAll("SELECT count(due.maxdate) FROM (SELECT max(DATUMBEGIN) as maxdate FROM DIER JOIN DIER_VOORTPLANTING ON DIER.DIERID = DIER_VOORTPLANTING.DIERID WHERE DIER_VOORTPLANTING.VOORTPLANTINGCODE > 1 AND DIER_VOORTPLANTING.VOORTPLANTINGCODE < 6 AND DIER_VOORTPLANTING.INS_OK = 1 AND DATUMBEGIN < '2012-10-01' AND DATUMBEGIN >= '2012-03-01' AND DIER.STATUS < 9 AND DIER.LACTATIENUMMER IS NULL GROUP BY DIER.DIERID) as due");
+		$data['cows_pregnant_summer'] = $this->odbcFetchAll("SELECT count(due.maxdate) FROM (SELECT max(DATUMBEGIN) as maxdate FROM DIER JOIN DIER_VOORTPLANTING ON DIER.DIERID = DIER_VOORTPLANTING.DIERID WHERE DIER_VOORTPLANTING.VOORTPLANTINGCODE > 1 AND DIER_VOORTPLANTING.VOORTPLANTINGCODE < 6 AND DIER_VOORTPLANTING.INS_OK = 1 AND DATUMBEGIN < '2012-12-31' AND DATUMBEGIN >= '2012-10-01' AND DIER.STATUS < 9 AND DIER.LACTATIENUMMER > 0 GROUP BY DIER.DIERID) as due");
+		$data['heifers_pregnant_summer'] = $this->odbcFetchAll("SELECT count(due.maxdate) FROM (SELECT max(DATUMBEGIN) as maxdate FROM DIER JOIN DIER_VOORTPLANTING ON DIER.DIERID = DIER_VOORTPLANTING.DIERID WHERE DIER_VOORTPLANTING.VOORTPLANTINGCODE > 1 AND DIER_VOORTPLANTING.VOORTPLANTINGCODE < 6 AND DIER_VOORTPLANTING.INS_OK = 1 AND DATUMBEGIN < '2012-12-31' AND DATUMBEGIN >= '2012-10-01' AND DIER.STATUS < 9 AND DIER.LACTATIENUMMER IS NULL GROUP BY DIER.DIERID) as due");
 		$data['dry'] = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE status=8 AND LACTATIENUMMER > 0");
 		return $data;
 	}
@@ -306,6 +313,15 @@ class uniform {
 			if(!$check && !$cidr_in && !$is_cystic) $return['cows'][] = $cow;
 		}
 		return $return;
+	}
+	
+	function recentFootTrimmings() {
+		$trim = $this->lookupHealthEvent('Foot Trimming');
+		$trim = $trim['CODEZIEKTE'];
+		$trimmed = $this->odbcFetchAll("SELECT FIRST 3 DIER_ZIEKTE.DATUMZIEKTE,COUNT(*) FROM DIER_ZIEKTE WHERE CODEZIEKTE=".$trim." GROUP BY DATUMZIEKTE ORDER BY DATUMZIEKTE DESC");
+		$dates = array();
+		foreach($trimmed as $date) $dates[$date['DATUMZIEKTE']] = $date['COUNT'];
+		return $dates;
 	}
 	
 	function footRechecks() {

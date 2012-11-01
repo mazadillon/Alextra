@@ -4,6 +4,9 @@ include 'templates/header.htm';
 <h1>Foot Trimming</h1>
 <form action="index.php?a=footTrimming" method="post">
 <?php
+echo 'Recent foot trimming visits: ';
+foreach($recent as $date => $no) echo $date.' ('.$no.'), ';
+echo '<br />';
 echo '<input type="checkbox" name="routine" value="checked"';
 if($routine) echo ' checked="true"';
 echo ' /><input type="text" name="days" value="'.$days.'" size="3" /> days routine trim ('.date('d/m/Y',strtotime('-'.$days.' days')).'), limit <input type="text" name="routine_limit" size="3"> #'.$routine_count.'<br />

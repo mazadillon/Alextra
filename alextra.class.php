@@ -203,12 +203,16 @@ class alpro {
 	}
 	
 	function copyMilkingTimes() {
-		$query = "SELECT TblCow.CowNo,TblCow.MilkTimeToday1,TblCow.MilkTimeToday2,TblCowB.MilkTimeTodaySS1,TblCowB.MilkTimeTodaySS2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo";		
+		$query = "SELECT TblCow.CowNo,TblCowB.IDTimeTodayMM1,TblCowB.IDTimeTodaySS1,TblCowB.IDTimeTodayMM2,TblCowB.IDTimeTodaySS2,TblCow.MilkTimeToday1,TblCow.MilkTimeToday2,TblCowB.MilkTimeTodaySS1,TblCowB.MilkTimeTodaySS2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo";		
 		$data = $this->odbcFetchAll($query);
 		if($data) {
 			foreach($data as $cow) {
 				$cow['am'] = $this->fixtime($cow['MilkTimeToday1'],$cow['MilkTimeTodaySS1']);
 				$cow['pm'] = $this->fixtime($cow['MilkTimeToday2'],$cow['MilkTimeTodaySS2']);
+				$cow['id_am'] = $this->fixtime($cow['IDTimeTodayMM1'],$cow['IDTimeTodaySS1']);
+				$cow['id_pm'] = $this->fixtime($cow['IDTimeTodayMM2'],$cow['IDTimeTodaySS2']);
+				if($cow['am'] == '' && $cow['id_am'] != '') $cow['am'] = $cow['id_am'];
+				if($cow['pm'] == '' && $cow['id_pm'] != '') $cow['pm'] = $cow['id_pm'];
 				//echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
 				if(date('U') - strtotime($cow['am']) < 3700 AND $cow['pm'] == '') {
 					$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
@@ -613,7 +617,9 @@ class alpro {
 		$result = mysql_query("SELECT * FROM alpro WHERE `date`='".date('Y-m-d')."' and ".date('a')." >= '".$date."' order by ".date('a')." ASC") or die(mysql_error());
 		if(mysql_num_rows($result) > 0) {
 			while($row = mysql_fetch_assoc($result)) {
-				if($row['cow'] != $latest['cow']) {
+				//Is cow already listed for today?
+				$exists = $this->queryRow("SELECT count(*) as count FROM milkrecording WHERE cow = '".$row['cow']."' AND stamp > ".strtotime('1am'));
+				if($row['cow'] != $latest['cow'] && $exists['count'] == 0) {
 					$stall = $this->adjustStall($stall);
 					$stamp = strtotime($row['date'].' '.$row[date('a')]);
 					mysql_query("INSERT INTO milkrecording (stamp,cow,stall) VALUES ('".$stamp."','".$row['cow']."','".$stall."')");

@@ -76,16 +76,19 @@ switch($_GET['a']) {
 	case 'fertilityBreakdown':
 	$data = $uni->fertilityBreakdown();
 	echo '<h1>Fertility Breakdown</h1>';
-	echo '2011 Calvers: '.$data['round_year']['COUNT'].'<br />';
-	echo 'Spring 2012 Calvers: '.$data['round_spring']['COUNT'].'<br />';
-	echo 'Summer 2012 Calvers: '.$data['summer']['COUNT'].'<br />';
+	echo '2011 Calvers: '.$data['round_year']['COUNT'].' ('.$data['round_year_served']['COUNT'].' Served)<br />';
+	echo 'Spring 2012 Calvers: '.$data['round_spring']['COUNT'].' ('.$data['round_spring_served']['COUNT'].' Served)<br />';
+	echo 'Summer 2012 Calvers: '.$data['summer']['COUNT'].' ('.$data['summer_served']['COUNT'].' Served)<br />';
 	$total = $data['round_year']['COUNT'] + $data['round_spring']['COUNT'] + $data['summer']['COUNT'];
 	echo '<b>Total Eligible Cows:</b> '. $total.'<br />';
-	echo 'Bulling Heifers: '.$data['heifers']['COUNT'].'<br />';
+	echo 'Bulling Heifers: '.$data['heifers']['COUNT'].' ('.$data['heifers_served']['COUNT'].' served)<br />';
 	$plus = $total+$data['heifers']['COUNT'];
 	echo '<b>Total to Serve:</b> '.$plus.'<br /><br />';
 	echo 'Dry: '.$data['dry']['COUNT'].'<br />';
-	echo 'Due Spring 2013: '.$data['pregnant']['COUNT'].'<br />';
+	echo 'Cows Due Spring 2013: '.$data['cows_pregnant_spring']['COUNT'].'<br />';
+	echo 'Heifers Due Spring 2013: '.$data['heifers_pregnant_spring']['COUNT'].'<br />';
+	echo 'Cows Due Summer 2013: '.$data['cows_pregnant_summer']['COUNT'].'<br />';
+	echo 'Heifers Due Summer 2013: '.$data['heifers_pregnant_summer']['COUNT'].'<br />';
 	echo 'Barren: '.$data['barren']['COUNT'].'<br />';
 	break;
 	
@@ -354,6 +357,7 @@ switch($_GET['a']) {
 	break;
 
 	case 'footTrimming':
+	$recent = $uni->recentFootTrimmings();
 	if(!isset($_POST['routine']) OR $_POST['routine']!='checked') $routine = false;
 	else $routine = true;
 	if(!isset($_POST['days'])) $days = 180;
