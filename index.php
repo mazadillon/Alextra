@@ -167,7 +167,8 @@ switch($_GET['a']) {
 	
 	case 'dueSort':
 	if(isset($_GET['date'])) {
-		print_r($uni->dueSort($_GET['date']));
+		$cows = $uni->dueSort($_GET['date']);
+		foreach($cows as $cow) echo $cow['NUMMER'].'<br />';
 	} else print_r($uni->dueSort(false));
 	break;
 	

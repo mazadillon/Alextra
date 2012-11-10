@@ -406,7 +406,7 @@ class uniform {
 				$cow['heat'] = $data['LAATSTETOCHTDATUM'];
 				$cow['bull'] = false;
 			}
-			if(strtotime($cow['heat']) != 0) $cow['SinceHeat'] = round((time() - strtotime($cow['heat'])) / 86400,0);
+			if(strtotime($cow['heat']) != 0) $cow['SinceHeat'] = round((strtotime('1am') - strtotime($cow['heat'].' 1am')) / 86400,0);
 			else $cow['SinceHeat'] = false;
 		} else $cow['cow'] = $number;
 		return $cow;

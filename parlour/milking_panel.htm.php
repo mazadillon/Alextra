@@ -15,7 +15,7 @@ if(is_array($data) AND (time() - strtotime($data[0][$data[0]['milking']]) < 7200
 		echo '<td>'.$row['info']['name'].'</td>';
 		if(17 < $row['info']['SinceHeat'] && $row['info']['SinceHeat'] < 23) echo '<td style="background-color:red;color:white;">';
 		else echo '<td>&nbsp;';
-		if($row['info']['SinceHeat'] != false) echo date('d/m/Y',strtotime($row['info']["heat"])).' '.$row['info']['SinceHeat']." days ago. ";
+		if($row['info']['SinceHeat'] !== false) echo date('d/m/Y',strtotime($row['info']["heat"])).' '.$row['info']['SinceHeat']." days ago. ";
 		if($row['info']['bull']) echo $row['info']['bull'];
 		echo "</td>";
 	}
