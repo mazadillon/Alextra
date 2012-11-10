@@ -80,6 +80,20 @@ class alpro {
 		}
 	}
 	
+	function scrapeNML() {
+		$data = file_get_contents('http://www.herdcompanion.co.uk/mqm/MilkQualityMonitorTable.aspx?BackURL=~/MilkQualityMonitorChart.aspx&NmrHerdNumber='.$this->config['alpro']['herdno'].'&MilkMetric=1&MyscFirstYear=2005&MyscLastYear='.date('Y').'&MyscStartMonth='.date('m').'&MyscStartYear='.date('Y',strtotime('-1 Year')).'&MyscStopMonth='.date('m').'&MyscStopYear='.date('Y').'&NmrHerdType='.$this->config['alpro']['NmrHerdType']);
+		list($junk,$data) = explode('<td>Urea (%)</td>',$data,2);
+		$data = explode('</tr><tr>',$data);
+		unset($data[0]);
+		foreach($data as $test) {
+			$test = explode('</td>',$test);
+			foreach($test as $id => $value) $test[$id] = trim(strip_tags($value));
+			$date = DateTime::createFromFormat('d/m/y', $test[0]);
+			$test[0] = $date->format('Y-m-d');
+			mysql_query("INSERT IGNORE into milktests (date,scc,bacto,butter,protein,urea) VALUES ('".$test[0]."','".$test[1]."','".$test[2]."','".$test[3]."','".$test[5]."','".$test[7]."')") or die(mysql_error());
+		}
+	}
+	
 	function queryRow($query) {
 		$result = mysql_query($query);
 		if(!$result) die(mysql_error());
@@ -511,11 +525,13 @@ class alpro {
 			$this->copyAlproBackups();
 			$this->mailMissingExtraCows();
 			$this->importCake();
+			$this->scrapeNML();
 			if(date('w') == '1') {
 				$this->backup_database();
 				$this->cakeReport();
 			}
 		}
+		$this->resetTimesToday();
 	}
 	
 	function fetchRecent($milking,$limit=1) {
