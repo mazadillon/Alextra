@@ -326,6 +326,10 @@ class alpro {
 		}
 	}
 	
+	function milkTests($limit = 5) {
+		return $this->queryAll("SELECT * FROM milktests ORDER BY date DESC LIMIT ".$limit);
+	}
+	
 	function oldParseUniformReport() {
 		// NOW REDUNDANT
 		// Generate a report in Uniform with the following fields in this order:
