@@ -29,6 +29,10 @@ switch($_GET['a']) {
 	sort($cows);
 	include 'templates/sort.htm';
 	break;
+
+	case 'test':
+	$alpro->importData();
+	break;
 	
 	case 'notSeenBulling':
 	$return = $uni->notSeenBulling(date('Y-m-d'));

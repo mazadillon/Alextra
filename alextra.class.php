@@ -120,18 +120,24 @@ class alpro {
 	
 	function fetchCutIDTimes() {
 		$times = $this->odbcFetchAll("SELECT cowNo,LastCutIDTime,LastCutIDTimeSS FROM TblCowB");
+		$count = 0;
 		foreach($times as $cow) {
 			if(empty($cow['LastCutIDTime'])) $time = false;
 			else $time = substr($cow['LastCutIDTime'],11,5).':'.str_pad((int) $cow['LastCutIDTimeSS'],2,"0",STR_PAD_LEFT);
 			if($time) {
 				if(!$this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."'")) {
-					mysql_query("INSERT INTO alpro (cow,date) VALUES ('".mysql_real_escape_string($cow['cowNo'])."','".mysql_real_escape_string(date('Y-m-d'))."')");
+					mysql_query("INSERT INTO alpro (cow,date) VALUES ('".mysql_real_escape_string($cow['cowNo'])."','".mysql_real_escape_string(date('Y-m-d'))."')") or die(mysql_error());
 				}			
 				if(substr($time,0,2) < 13) $apm = 'am';
 				else $apm = 'pm';
-				mysql_query("UPDATE alpro SET `sort_id_".$apm."`='".mysql_real_escape_string($time)."' WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."' LIMIT 1") or die(mysql_error());	
+				$query = "UPDATE `alpro` SET sort_id_".$apm."='".mysql_real_escape_string($time)."' WHERE cow=".mysql_real_escape_string($cow['cowNo'])." AND date='".mysql_real_escape_string(date('Y-m-d'))."'";
+				echo $query.'<br />';
+				echo mysql_query($query,$this->mysql) or die(mysql_error());	
+				print_r($this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' AND cow='".$cow['cowNo']."'"));
+				$count = $count + mysql_affected_rows();
 			}
 		}
+		echo 'Done '.$count;
 	}
 	
 	function fedYesterday() {
@@ -189,8 +195,9 @@ class alpro {
 	}
 	
 	function resetTimesToday() {
-		mysql_query("DELETE FROM alpro WHERE date='".date('Y-m-d')."'");
+		mysql_query("UPDATE alpro SET am='', PM='' WHERE date='".date('Y-m-d')."'");
 		$this->copyMilkingTimes();
+		$this->fetchCutIDTimes();
 	}
 	
 	//Copy milking times from the alpro database to mySQL
@@ -535,7 +542,7 @@ class alpro {
 				$this->cakeReport();
 			}
 		}
-		$this->resetTimesToday();
+		if(date('H') < 3) $this->resetTimesToday();
 	}
 	
 	function fetchRecent($milking,$limit=1) {
