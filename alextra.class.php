@@ -123,7 +123,7 @@ class alpro {
 		foreach($times as $cow) {
 			if(empty($cow['LastCutIDTime'])) $time = false;
 			else $time = substr($cow['LastCutIDTime'],11,5).':'.str_pad((int) $cow['LastCutIDTimeSS'],2,"0",STR_PAD_LEFT);
-			if($time) {
+			if($time && strtotime($time) < time()) {
 				if(!$this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."'")) {
 					mysql_query("INSERT INTO alpro (cow,date) VALUES ('".mysql_real_escape_string($cow['cowNo'])."','".mysql_real_escape_string(date('Y-m-d'))."')") or die(mysql_error());
 				}			
