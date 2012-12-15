@@ -17,7 +17,7 @@ switch($_GET['a']) {
 	case 'csvSearch':
 	$alpro->csvSearch('2');
 	break;
-		
+	
 	case 'cidrSync':
 	$sync = $uni->lookupHealthEvent('CIDR Synchronise');
 	$cows = $uni->healthReporting($sync['CODEZIEKTE'],'2012-09-23','2012-09-25');
@@ -31,7 +31,7 @@ switch($_GET['a']) {
 	break;
 
 	case 'test':
-	$alpro->importData();
+	$alpro->locateMissedStalls();
 	break;
 	
 	case 'notSeenBulling':

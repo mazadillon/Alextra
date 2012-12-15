@@ -20,6 +20,7 @@ class alpro {
 		include 'alextra_config.php';
 		$this->config = $config;
 		$this->connect();
+		//if(!$this->authenticate()) die('Need to authorise access, ask Matt<br />'.$_COOKIE['pass']);
 		$this->copyLatestMilkingTimes();
 		$this->sortedCows();
 		$this->checkFlags();
@@ -80,6 +81,28 @@ class alpro {
 		}
 	}
 	
+	function authenticate() {
+		$hostname = $_SERVER['REMOTE_ADDR'];
+		if(isset($_COOKIE['pass'])) {
+			$user = $this->queryRow("SELECT * FROM `users` WHERE hostname='".mysql_real_escape_string($hostname)."' AND pass='".mysql_real_escape_string($_COOKIE['pass'])."'");
+			if(!$user) {
+				setcookie("pass",false,time() - 3600);
+				return false;
+			} elseif($user['pass']==$_COOKIE['pass'] && $user['allowed']==1) {
+				if($user['lastaccess'] != date('Y-m-d')) {
+					mysql_query("UPDATE `users` SET lastaccess='".date('Y-m-d')."' WHERE id='".$user['id']."'");
+				}
+				return true;
+			}
+			else return false;
+		} elseif(!empty($hostname)) {
+			$key = md5(uniqid());
+			mysql_query("INSERT INTO `users` (`hostname`,`pass`) VALUES ('".mysql_real_escape_string($hostname)."','".$key."')") or die(mysql_error());
+			setcookie("pass", $key, time()+43200000);			
+			return false;
+		} else return false;
+	}
+	
 	function scrapeNML() {
 		$data = file_get_contents('http://www.herdcompanion.co.uk/mqm/MilkQualityMonitorTable.aspx?BackURL=~/MilkQualityMonitorChart.aspx&NmrHerdNumber='.$this->config['alpro']['herdno'].'&MilkMetric=1&MyscFirstYear=2005&MyscLastYear='.date('Y').'&MyscStartMonth='.date('m').'&MyscStartYear='.date('Y',strtotime('-1 Year')).'&MyscStopMonth='.date('m').'&MyscStopYear='.date('Y').'&NmrHerdType='.$this->config['alpro']['NmrHerdType']);
 		list($junk,$data) = explode('<td>Urea (%)</td>',$data,2);
@@ -93,7 +116,7 @@ class alpro {
 			mysql_query("INSERT IGNORE into milktests (date,scc,bacto,butter,protein,urea) VALUES ('".$test[0]."','".$test[1]."','".$test[2]."','".$test[3]."','".$test[5]."','".$test[7]."')") or die(mysql_error());
 		}
 	}
-	
+		
 	function queryRow($query) {
 		$result = mysql_query($query);
 		if(!$result) die(mysql_error());
@@ -102,20 +125,53 @@ class alpro {
 	}
 	
 	//Inserts milking times or updates if data exists already for that day
-	function insertMilkingTime($cow,$date,$am,$pm) {
-		if($cow > 0) {
-			if(trim($am) != '' OR trim($pm) != '') {
-				if($this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."'")) {
-					mysql_query("UPDATE alpro SET `am`='".mysql_real_escape_string($am)."', `pm`='".mysql_real_escape_string($pm)."' WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."' LIMIT 1") or die(mysql_error());
-					//echo 'Updated '.mysql_affected_rows().' cows<br />';
-				} else mysql_query("INSERT INTO alpro (`cow`,`date`,`am`,`pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($pm)."')") or die(mysql_error());
-				return true;
-			}
-		} else return false;
-	}
+	function insertMilkingTime($cow,$date,$am,$id_am,$pm,$id_pm,$mpc_am,$mpc_pm) {
+		if($cow == 0) $test = $this->queryRow("SELECT * FROM alpro WHERE date='".mysql_real_escape_string($date)."' AND cow=0 AND am='".$am."' AND pm='".$pm."' AND stall_am='".$mpc_am."' AND stall_pm='".$mpc_pm."'");
+		else $test = $this->queryRow("SELECT * FROM alpro WHERE date='".mysql_real_escape_string($date)."' AND cow='".$cow."'");
+		if($test) {
+			mysql_query("UPDATE alpro SET `am`='".mysql_real_escape_string($am)."',`id_am`='".mysql_real_escape_string($id_am)."', `pm`='".mysql_real_escape_string($pm)."',`id_pm`='".mysql_real_escape_string($id_pm)."', stall_am=".mysql_real_escape_string($mpc_am).", stall_pm=".mysql_real_escape_string($mpc_pm)." WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."' LIMIT 1") or die(mysql_error());
+			//echo 'Updated '.mysql_affected_rows().' cows<br />';
+		} else mysql_query("INSERT IGNORE INTO alpro (`cow`,`date`,`am`,`pm`,`stall_am`,`stall_pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($pm)."','".mysql_real_escape_string($mpc_am)."','".mysql_real_escape_string($mpc_pm)."')") or die(mysql_error());
+		return true;
+}
 	
 	function actTag($cow) {
 		return $this->odbcFetchAll("SELECT * FROM TblCowAct WHERE CowNo=".$cow);
+	}
+	
+	function debugStallIDs() {
+		$rows = $this->odbcFetchAll("SELECT TblCow.cowNo,IDTimeTodayMM1,IDTimeTodayMM2,IDTimeTodaySS1,IDTimeTodaySS2,MilkTimeToday1,MilkTimeToday2,MilkTimeTodaySS1,MPCToday2,MilkTimeTodaySS2,MPCToday1,SecondLapCowToday2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo ORDER BY MilkTimeToday2 DESC, MilkTimeTodaySS2 DESC");
+		echo count($rows).' cows';
+		foreach($rows as $id => $row) {
+			$row['MilkTimeToday1'] = $this->fixtime($row['MilkTimeToday1'],$row['MilkTimeTodaySS1']);
+			$row['MilkTimeToday2'] = $this->fixtime($row['MilkTimeToday2'],$row['MilkTimeTodaySS2']);
+			unset($row['MilkTimeTodaySS1']);
+			unset($row['MilkTimeTodaySS2']);
+			$rows[$id] = $row;
+		}
+		echo '<table>';
+		echo '<tr><td>Cow</td><td>Time</td><td>MPC</td><td>Second Time</td></tr>';
+		foreach($rows as $id=> $row) {
+			if($row['MPCToday2'] != $rows[$id+1]['MPCToday2'] + 1 && $row['MPCToday2'] != '1080') {
+				echo '<tr style="background-color: red;">';
+			} else {
+				echo '<tr>';
+				$round_again = false;
+			}
+			//$row['MPCToday2'] = $row['MPCToday2'] - 1079;
+			if(!isset($stalls[$row['MPCToday2']])) $stalls[$row['MPCToday2']] = 1;
+			else $stalls[$row['MPCToday2']]++;
+			$prev = $this->odbcFetchAll("SELECT CowNo,SecondLapCowToday2,MPCToday2 FROM TblCow WHERE MPCToday2 = ".$row['MPCToday2']." Order by MilkTimeToday1 DESC");
+			$prev = $prev[1];
+			echo '<td>'.$row['cowNo'].'</td>';
+			echo '<td>'.$row['MilkTimeToday2'].'</td>';
+			echo '<td>'.$row['MPCToday2'].' = '.($row['MPCToday2']-1079).'</td>';
+			echo '<td>'.$row['SecondLapCowToday2'].'</td>';
+			echo '</tr>';
+		}
+		echo '</table>';
+		ksort($stalls);
+		print_r($stalls);
 	}
 	
 	function fetchCutIDTimes() {
@@ -218,7 +274,7 @@ class alpro {
 	}
 	
 	function copyMilkingTimes() {
-		$query = "SELECT TblCow.CowNo,TblCowB.IDTimeTodayMM1,TblCowB.IDTimeTodaySS1,TblCowB.IDTimeTodayMM2,TblCowB.IDTimeTodaySS2,TblCow.MilkTimeToday1,TblCow.MilkTimeToday2,TblCowB.MilkTimeTodaySS1,TblCowB.MilkTimeTodaySS2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo";		
+		$query = "SELECT TblCow.CowNo,TblCowB.IDTimeTodayMM1,TblCowB.IDTimeTodaySS1,TblCowB.IDTimeTodayMM2,TblCowB.IDTimeTodaySS2,TblCow.MilkTimeToday1,TblCow.MilkTimeToday2,TblCowB.MilkTimeTodaySS1,TblCowB.MilkTimeTodaySS2,MPCToday1,MPCToday2 FROM TblCow INNER JOIN TblCowB ON TblCow.CowNo = TblCowB.CowNo";		
 		$data = $this->odbcFetchAll($query);
 		if($data) {
 			foreach($data as $cow) {
@@ -226,13 +282,15 @@ class alpro {
 				$cow['pm'] = $this->fixtime($cow['MilkTimeToday2'],$cow['MilkTimeTodaySS2']);
 				$cow['id_am'] = $this->fixtime($cow['IDTimeTodayMM1'],$cow['IDTimeTodaySS1']);
 				$cow['id_pm'] = $this->fixtime($cow['IDTimeTodayMM2'],$cow['IDTimeTodaySS2']);
-				if($cow['am'] == '' && $cow['id_am'] != '') $cow['am'] = $cow['id_am'];
-				if($cow['pm'] == '' && $cow['id_pm'] != '') $cow['pm'] = $cow['id_pm'];
+				if($cow['MPCToday1'] != 0) $cow['MPCToday1'] = $cow['MPCToday1'] - 1079;
+				if($cow['MPCToday2'] != 0) $cow['MPCToday2'] = $cow['MPCToday2'] - 1079;
 				//echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
-				if(date('U') - strtotime($cow['am']) < 3700 AND $cow['pm'] == '') {
-					$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
-				} elseif(strtotime($cow['pm']) < date('U')) {
-					$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['pm']);
+				if(!empty($cow['am']) OR !empty($cow['id_am']) OR !empty($cow['pm']) OR !empty($cow['id_pm'])) {
+					if(date('U') - strtotime($cow['am']) < 3700 AND $cow['pm'] == '') {
+						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
+					} elseif(strtotime($cow['pm']) < date('U')) {
+						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
+					}
 				}
 			}
 		}
@@ -577,8 +635,8 @@ class alpro {
 	
 	function dataStatus() {
 		$return['status'] = $this->queryOne("SELECT count(*) FROM status");
-		$return['am'] = $this->queryOne("SELECT count(*) FROM alpro WHERE am!= '' and date='".date('Y-m-d')."'");
-		$return['pm'] = $this->queryOne("SELECT count(pm) FROM alpro WHERE pm!='' and date='".date('Y-m-d')."'");
+		$return['am'] = $this->queryOne("SELECT count(*) FROM alpro WHERE am!= '' AND cow!=0 and date='".date('Y-m-d')."'");
+		$return['pm'] = $this->queryOne("SELECT count(pm) FROM alpro WHERE pm!='' AND cow!=0 and date='".date('Y-m-d')."'");
 		return $return;
 	}
 	
@@ -790,7 +848,7 @@ class alpro {
 		$data = $this->fetchRecent($milking,10);
 		if($data) {
 			foreach($data as $id => $cow) {
-				$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
+				if(!empty($cow['cow'])) $data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
 				$data[$id]['milking'] = $milking;
 			}
 			return $data;
@@ -805,6 +863,46 @@ class alpro {
 			$data[$id]['milking'] = $milking;
 		}
 		return $data;
+	}
+	
+	function locateMissedStalls() {
+		$milking = $this->currentMilking();
+		$data = $this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' Order by ".$milking);
+		$prev = false;
+		foreach($data as $cow) {
+			if($prev && $cow['stall_'.$milking]>0 AND $prev['stall_'.$milking]>0) {
+				if($cow['stall_'.$milking]>$prev['stall_'.$milking]) $gap = $cow['stall_'.$milking]-$prev['stall_'.$milking];
+				else $gap = $prev['stall_'.$milking] - 40 + $cow['stall_'.$milking];
+				if($gap > 1 && $gap <= 5) {
+					$end = strtotime($cow[$milking]);
+					$start = strtotime($prev[$milking]);
+					$timespan = $end-$start;
+					$timing = $timespan/$gap;
+					echo $gap.' stalls gap here, time gap '.$timespan.' = '.$timing.'<br />';
+					for($i=1;$i < $gap;$i++) {
+						$start = $start + $timing;
+						$stall = $prev['stall_'.$milking] + $i;
+						if($stall == 41) $stall = 1;
+						echo $stall.' '.date('H:i:s',$start).' FILLED<br />';
+						if($milking=='am') {
+							$times['am'] = date('H:i:s',$start);
+							$times['mpc_am'] = $stall;
+							$times['pm'] = '';
+							$times['mpc_pm'] = 0;
+						} else {
+							$times['am'] = '';
+							$times['mpc_am'] = 0;
+							$times['pm'] = date('H:i:s',$start);
+							$times['mpc_pm'] = $stall;
+						}
+						$this->insertMilkingTime(0,date('Y-m-d'),$times['am'],'',$times['pm'],'',$times['mpc_am'],$times['mpc_pm']);
+						unset($times);
+					}
+				}	
+			}
+			echo $cow['stall_'.$milking].' '.$cow[$milking].' '.$cow['cow'].'<br />';
+			$prev = $cow;
+		}
 	}
 	
 	function fetchIDTimes() {

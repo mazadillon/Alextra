@@ -7,6 +7,7 @@ echo '<?xml version="1.0"?>
 <!DOCTYPE wml PUBLIC "-//WAPFORUM//DTD WML 1.1//EN"
 "http://www.wapforum.org/DTD/wml_1.1.xml">
 <wml>';
+echo '<a href="/"><img src="/parlour/home.png" border="0" /></a>';
 echo '<h1>Cow Status</h1>';
 echo '<form action="index.php" method="get"><input type="text" name="cow" value="'.$_GET['cow'].'" />';
 echo '<input type="submit" value="Go" /></form>';
