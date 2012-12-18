@@ -2,7 +2,7 @@
 ERROR_REPORTING('E_NONE');
 include 'reload.htm';
 //print_r($data);
-if(is_array($data) AND (time() - strtotime($data[0][$data[0]['milking']]) < 3600) AND !isset($_GET['clock'])) {
+if(is_array($data) AND (time() - strtotime($data[0]['id_'.$data[0]['milking']]) < 3600) AND !isset($_GET['clock'])) {
 	echo $milking_status.' cows milked so far. ';
 	echo $milking_speed['speed'].' seconds per cow. '.$milking_speed['cph'].' cows per hour. Rotation time '.$milking_speed['platform'];
 	if(isset($sorted) && $sorted) echo '<div style="font-size:2em;border:1px dashed black;background-color:yellow;padding:5px;text-align:center;">Cow '.$sorted['cow'].' sorted, total of '.$sorted['total'].' this milking.</div>';
@@ -10,7 +10,10 @@ if(is_array($data) AND (time() - strtotime($data[0][$data[0]['milking']]) < 3600
 	echo '<tr><th>#</th><th>Cow</th><th>Status</th><th>DIM</th><th>Name</th><th>Heat</th></tr>';
 	foreach($data as $id =>	$row) {
 		if(isset($row['info'])) {
-			echo '<tr><td>'.$row['stall_'.$row['milking']].'</td>';
+			echo '<tr><td>';
+			if($row['stall_'.$row['milking']] == '0') echo '&nbsp;';
+			else echo $row['stall_'.$row['milking']];
+			echo '</td>';
 			echo '<td style="font-size: xx-large;"><a href="index.php?a=cowstatus&cow='.$row['info']['cow'].'">'.$row['info']["cow"].'</a></td>';
 			echo '<td class="'.strtolower($row['info']['status']).'">'.$row['info']["status"].'</td>';
 			echo '<td>'.$row['info']['dim'].'</td>';
