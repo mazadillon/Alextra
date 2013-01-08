@@ -715,6 +715,7 @@ class alpro {
 	function adjustStall($stall,$adjust = 1) {
 		$stall = $stall + $adjust;
 		if($stall > 40) $stall = 1;
+		if($stall == 0) $stall = 40;
 		return $stall;
 	}
 	
@@ -739,12 +740,14 @@ class alpro {
 	function removeCow($cow,$stamp) {
 		mysql_query("DELETE FROM milkrecording WHERE cow='".$cow."' AND stamp='".$stamp."'");
 		//Now bump down all following stall numbers
+		/*
 		$data = $this->queryAll("SELECT * FROM milkrecording WHERE stamp > ".$stamp." ORDER BY STAMP ASC");
 		if($data) {
 			foreach($data as $row) {
 				mysql_query("UPDATE milkrecording SET stall = '".$this->adjustStall($row['stall'],-1)."' WHERE stamp='".$row['stamp']."' AND cow='".$row['cow']."'");
 			}
 		}
+		*/
 	}
 	
 	function editStall($cow,$stamp,$stall) {
@@ -873,6 +876,30 @@ class alpro {
 		return $data;
 	}
 	
+	function newMilkRecording($all=false,$force=false) {
+		$milking = $this->currentMilking();
+		$min = $this->queryRow("SELECT * FROM milkrecording WHERE stamp>'".date('Y-m-d 01:00:00')."' ORDER BY stamp DESC LIMIT 1");
+		if($min['cow'] > 0 OR !$min OR $force) {
+			$new = $this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' AND ".$milking." > '".date('H:i:s',$min['stamp'])."' ORDER BY ".$milking." ASC");
+			if($new) {
+				foreach($new as $additional) {
+					$this->manualInsertRecording($additional['cow'],$additional['stall_'.$milking],strtotime($additional[$milking]));
+					if(!$min) break;
+					if($force) break;
+					if($additional['cow'] == 0) break;
+				}
+			}
+		}
+		if($all) return $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC");
+		else return $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC LIMIT 10");
+	}
+	
+	function manualInsertRecording($cow,$stall,$stamp) {
+		if(mysql_query("INSERT INTO milkrecording (cow,stall,stamp) VALUES ('".$cow."','".$stall."','".$stamp."')")) {
+			return true;
+		} else return false;
+	}
+	
 	function locateMissedStalls() {
 		$milking = $this->currentMilking();
 		$data = $this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' Order by ".$milking);
@@ -955,7 +982,7 @@ class alpro {
 	
 	function milkingTotal($milking = false) {
 		if(!$milking) $milking = $this->currentMilking();
-		return $this->queryOne("SELECT count(*) FROM alpro WHERE date='".date('Y-m-d')."' AND ".$milking." != '' AND cow!=0");
+		return $this->queryOne("SELECT count(*) FROM alpro WHERE date='".date('Y-m-d')."' AND cow!=0 AND (".$milking." != '' OR id_".$milking." !='' OR sort_id_".$milking." != '')");
 	}
 	
 	function filter($cow=false, $activity=false, $start=false, $end=false,$sort=false) {
