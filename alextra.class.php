@@ -105,6 +105,7 @@ class alpro {
 	
 	function scrapeNML() {
 		$data = file_get_contents('http://www.herdcompanion.co.uk/mqm/MilkQualityMonitorTable.aspx?BackURL=~/MilkQualityMonitorChart.aspx&NmrHerdNumber='.$this->config['alpro']['herdno'].'&MilkMetric=1&MyscFirstYear=2005&MyscLastYear='.date('Y').'&MyscStartMonth='.date('m').'&MyscStartYear='.date('Y',strtotime('-1 Year')).'&MyscStopMonth='.date('m').'&MyscStopYear='.date('Y').'&NmrHerdType='.$this->config['alpro']['NmrHerdType']);
+		print_r($data);
 		list($junk,$data) = explode('<td>Urea (%)</td>',$data,2);
 		$data = explode('</tr><tr>',$data);
 		unset($data[0]);
@@ -331,7 +332,7 @@ class alpro {
 			// Check milked against in milk
 			foreach($milked as $cow) {
 				if(!in_array($cow['cow'],$cows)) {
-					$extra[] = array($cow['cow']);
+					$extra[] = $cow['cow'];
 					$this->logMissingExtra($cow['cow'],'extra');
 				} else {
 					$key = array_search($cow['cow'],$cows);
@@ -382,7 +383,7 @@ class alpro {
 		}
 		if($extra != false) {
 			$message .= "One or more cows came through the parlour despite being dry:\n";
-			foreach($extra as $cow) $message .= $cow['cow']."\n";
+			foreach($extra as $cow) $message .= $cow."\n";
 		}
 		if($message != '') {
 			echo "Email sent to office@fordpartners.co.uk containing the following: \n".$message;
@@ -796,7 +797,7 @@ class alpro {
 				$data[$prev['date']]['am_gaps'] = $gaps;
 				$data[$prev['date']]['am_stops'] = $stops;
 				$data[$prev['date']]['am_milked'] = $milked;
-				$data[$prev['date']]['milked'] = $this->queryOne("select count(*) as milked FROM alpro where date = '".$prev['date']."'");
+				$data[$prev['date']]['milked'] = $this->queryOne("select count(*) as milked FROM alpro where cow != 0 AND date = '".$prev['date']."'");
 				$data[$prev['date']]['am_missed'] = $data[$prev['date']]['milked'] - $milked;
 				$gaps = 0;
 				$stops = 0;
@@ -829,7 +830,7 @@ class alpro {
 				$data[$prev['date']]['pm_gaps'] = $gaps;
 				$data[$prev['date']]['pm_stops'] = $stops;
 				$data[$prev['date']]['pm_milked'] = $milked;
-				$data[$prev['date']]['milked'] = $this->queryOne("select count(*) as milked FROM alpro where date = '".$prev['date']."'");
+				$data[$prev['date']]['milked'] = $this->queryOne("select count(*) as milked FROM alpro where date = '".$prev['date']."' and cow!=0");
 				$data[$prev['date']]['pm_missed'] = $data[$prev['date']]['milked'] - $milked;
 				$gaps = 0;
 				$stops = 0;
@@ -844,7 +845,7 @@ class alpro {
 				else $data[$cow['date']]['diff_pm'][$diff]++;
 			}
 			arsort($data[$cow['date']]['diff_am']);
-			arsort($data[$cow['date']]['diff_pm']);
+			if(!empty($data[$cow['date']]['diff_pm'])) arsort($data[$cow['date']]['diff_pm']);
 			$prev=$cow;
 			//print_r($data);
 		}
@@ -987,7 +988,7 @@ class alpro {
 	
 	function filter($cow=false, $activity=false, $start=false, $end=false,$sort=false) {
 		if(!$sort) $sort = 'cow';
-		$query = 'SELECT * FROM alpro WHERE ';
+		$query = 'SELECT * FROM alpro WHERE cow!= 0 AND ';
 		if($cow) $query .= "cow='".mysql_real_escape_string($cow)."' AND ";
 		if($activity) $query .= "activity IS NOT NULL AND ";
 		$query .= "date >= '".$start."' AND date <= '".$end."' ORDER BY ".mysql_real_escape_string($sort).",date ASC";
@@ -1072,11 +1073,11 @@ class alpro {
 				$missed = 0;
 			} else {
 				if(!isset($cows[$row['cow']])) $cows[$row['cow']] = '';
-				if(trim($row['am']) == '-') {
+				if(trim($row['id_am']) == '-') {
 					$cows[$row['cow']] .= '-';
 					$missed++;
 				} else $cows[$row['cow']] .= '+';
-				if(trim($row['pm']) == '-') {
+				if(trim($row['id_pm']) == '-') {
 					$cows[$row['cow']] .='-';
 					$missed++;
 				} else $cows[$row['cow']].= '+';
@@ -1110,6 +1111,14 @@ class alpro {
 		}
 		return $return;
 	}
+	
+	function latestID() {
+		$data = $this->queryRow("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' ORDER BY id_pm DESC, id_am DESC");
+		if($data) {
+			if($data['id_pm'] != '') return $data['id_pm'];
+			else return $data['id_am'];
+		} else return '';
+	}
 		
 	function dashboard() {
 		// Basic overview of key data
@@ -1123,6 +1132,7 @@ class alpro {
 		$data['missing_extra'] = $this->fetchMissingExtra(date('Y-m-d',strtotime('Yesterday')));
 		$data['updates'] = $this->fetchLastUpdate();
 		$data['activity'] = $this->fetchHighAct(false);
+		$data['latest_id'] = $this->latestID();
 		return $data;
 	}
 }

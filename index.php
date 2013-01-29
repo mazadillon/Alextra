@@ -31,7 +31,7 @@ switch($_GET['a']) {
 	break;
 
 	case 'test':
-	$alpro->locateMissedStalls();
+	$alpro->scrapeNML();
 	break;
 	
 	case 'notSeenBulling':
@@ -130,9 +130,9 @@ switch($_GET['a']) {
 	$data = $alpro->fetchMissingExtra($_GET['date']);
 	$start = date('Y-m-d',strtotime(date('Y-m-').'01'));
 	echo 'Missing Cows<br />';
-	foreach($data['missing'] as $cow) echo '<a href="filter.php?cow='.$cow['cow'].'&amp;start='.$start.'">'.$cow['cow'].'</a><br />';
+	if(!empty($data['missing'])) foreach($data['missing'] as $cow) echo '<a href="filter.php?cow='.$cow['cow'].'&amp;start='.$start.'">'.$cow['cow'].'</a><br />';
 	echo 'Extra Cows<br />';
-	foreach($data['extra'] as $cow) echo '<a href="filter.php?cow='.$cow['cow'].'&amp;start='.$start.'">'.$cow['cow'].'</a><br />';
+	if(!empty($data['extra'])) foreach($data['extra'] as $cow) echo '<a href="filter.php?cow='.$cow['cow'].'&amp;start='.$start.'">'.$cow['cow'].'</a><br />';
 	break;
 	
 	case 'locomotionTrim':
@@ -422,8 +422,8 @@ switch($_GET['a']) {
 	break;
 	
 	case 'dodgycollars':
-	$dodgy = $alpro->dodgyCollarsStatus(10);
-	$start = date('Y-m-d',strtotime('-10 days'));
+	$dodgy = $alpro->dodgyCollarsStatus(5);
+	$start = date('Y-m-d',strtotime('-5 days'));
 	include 'templates/header.htm';
 	echo '</div>Missed milkings since '.$start.'<table><tr><th>Cow</th><th>Missed Milkings</th></tr>';
 	foreach($dodgy as $cow => $misses) {

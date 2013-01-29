@@ -21,8 +21,9 @@ echo '<tr><td>Missed Yesterday</td>';
 if(!empty($data['missing_extra']['missing'])) echo '<td><a href="index.php?a=missing_extra">'.count($data['missing_extra']['missing']).'</a></td></tr>';
 else echo '<td>None</td></tr>';
 echo '<tr><td>Extra Yesterday</td>';
-if(!empty($data['missing_extra']['missing'])) echo '<td><a href="index.php?a=missing_extra">'.count($data['missing_extra']['extra']).'</a></td></tr>';
+if(!empty($data['missing_extra']['extra'])) echo '<td><a href="index.php?a=missing_extra">'.count($data['missing_extra']['extra']).'</a></td></tr>';
 else echo '<td>None</td></tr>';
+echo '<tr><td>Latest ID Time</td><td>'.$data['latest_id'].'</td></tr>';
 echo '</table>';
 echo '</div>';
 
