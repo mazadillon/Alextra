@@ -385,10 +385,7 @@ class alpro {
 			$message .= "One or more cows came through the parlour despite being dry:\n";
 			foreach($extra as $cow) $message .= $cow."\n";
 		}
-		if($message != '') {
-			echo "Email sent to office@fordpartners.co.uk containing the following: \n".$message;
-			mail("office@fordpartners.co.uk",'Missing or Extra Cows During Today\'s Milking',$message);
-		}
+		if($message != '') mail($this->config['email'],'Missing or Extra Cows During Today\'s Milking',$message);
 	}
 	
 	function milkTests($limit = 5) {
@@ -617,7 +614,7 @@ class alpro {
 			$message .= date('D jS',$date).' '.$day['cake']."kg\n";
 		}
 		$message .= "\nHope that's helpful,\n\nRegards\nMatt Ford";
-		mail("office@fordpartners.co.uk, sfuller@countrywidefarmers.co.uk","Cake Fed At Lime End Farm",$message,"From: Ford Partners <office@fordpartners.co.uk>");
+		mail($this->config['cake_email'],"Cake Fed At Lime End Farm",$message,"From: ".$this->config['email']);
 	}
 	
 	function importCake() {
