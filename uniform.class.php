@@ -534,6 +534,20 @@ class uniform {
 		return $return;
 	}
 	
+		
+	function kpi_pregnant_by_week($start,$end) {
+		$start = strtotime($start);
+		$end = strtotime($end);
+		$return = array();
+		while($end > $start) {
+			$this_end = $start + 604800;
+			$preg = $this->odbcFetchAll("SELECT count(*) FROM DIER_VOORTPLANTING WHERE VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 AND INS_OK = 1 AND DATUMBEGIN < '".date('Y-m-d',$this_end)."' AND DATUMBEGIN >= '".date('Y-m-d',$start)."'");
+			$return[date('Y-m-d',$start)] = $preg['COUNT'];
+			$start = $this_end;
+		}
+		return $return;
+	}
+	
 	// Analyse submission rate by week
 	function kpi_submission($start,$weeks=10) {
 		$return = array();

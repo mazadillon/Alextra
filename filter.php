@@ -24,6 +24,8 @@ echo '<option value="cow">Cow Number</option>';
 echo '<option value="date">Date</option>';
 echo '<option value="am">Milking AM</option>';
 echo '<option value="pm">Milking PM</option>';
+echo '<option value="id_am">ID AM</option>';
+echo '<option value="id_pm">ID PM</option>';
 echo '<option value="sort_id_am">Sort ID AM</option>';
 echo '<option value="sort_id_pm">Sort ID PM</option>';
 echo '<option value="activity">Activity</option></select>';
@@ -35,7 +37,7 @@ echo '<option value="activity">Activity</option></select>';
 </div>
 <div id="main">
 <table>
-<tr><th>Cow</th><th>Date</th><th>Milking AM</th><th>Milking PM</th><th>Sort Gate ID AM</th><th>Sort Gate ID PM</th><th>Activity Level</th></tr>
+<tr><th>Cow</th><th>Date</th><th>Milking AM</th><th>Milking PM</th><th>ID AM</th><th>ID PM</th><th>Sort Gate ID AM</th><th>Sort Gate ID PM</th><th>Activity Level</th></tr>
 <?php
 for($i=0;$i<count($data);$i++) {
 	if(is_int($i / 2)) echo '<tr class="highlight">';
@@ -44,6 +46,8 @@ for($i=0;$i<count($data);$i++) {
 	echo '<td>'.$data[$i]['date'].'</td>';
 	echo '<td>'.$data[$i]['am'].'</td>';
 	echo '<td>'.$data[$i]['pm'].'</td>';
+	echo '<td>'.$data[$i]['id_am'].'</td>';
+	echo '<td>'.$data[$i]['id_pm'].'</td>';
 	echo '<td>'.$data[$i]['sort_id_am'].'</td>';
 	echo '<td>'.$data[$i]['sort_id_pm'].'</td>';
 	echo '<td>'.$data[$i]['activity'].'</td>';

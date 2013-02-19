@@ -107,22 +107,36 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpis':
+	$cull['2013'] = $uni->kpi_cullage(2013);
 	$cull['2012'] = $uni->kpi_cullage(2012);
 	$cull['2011'] = $uni->kpi_cullage(2011);
 	$cull['2010'] = $uni->kpi_cullage(2010);
 	$cull['2009'] = $uni->kpi_cullage(2009);
 	$cull['2008'] = $uni->kpi_cullage(2008);
+	$sixweeks['2012'] = $uni->kpi_preg6weeks('2012-10-01');
 	$sixweeks['2011'] = $uni->kpi_preg6weeks('2011-10-01');
 	$sixweeks['2010'] = $uni->kpi_preg6weeks('2010-10-01');
 	$sixweeks['2009'] = $uni->kpi_preg6weeks('2009-10-01');
 	$sixweeks['2008'] = $uni->kpi_preg6weeks('2008-10-01');
 	$scc = $uni->kpi_scc();
-	$sub = $uni->kpi_submission('2011-10-01',12);
+	$sub = $uni->kpi_submission('2012-10-01',12);
 	$loc['2011'] = $uni->kpi_locomotion('2011-01-01','2011-12-31');
 	$loc['2012'] = $uni->kpi_locomotion('2012-01-01','2012-12-31');
 	$first['2010'] = $uni->kpi_firstService('2010-10-01','2010-12-24');
 	$first['2011'] = $uni->kpi_firstService('2011-10-01','2011-12-24');
+	$first['2012'] = $uni->kpi_firstService('2012-10-01','2012-12-24');
+	$by_week['2012'] = $uni->kpi_pregnant_by_week('2012-10-01','2012-12-24');
+	$by_week['2011'] = $uni->kpi_pregnant_by_week('2011-10-01','2011-12-24');
+	$by_week['2010'] = $uni->kpi_pregnant_by_week('2010-10-01','2010-12-24');
 	include 'templates/kpis.htm';
+	break;
+	
+	case 'kpi_pregs_week':
+	$by_week['2012'] = $uni->kpi_pregnant_by_week('2012-10-01','2012-12-24');
+	$by_week['2011'] = $uni->kpi_pregnant_by_week('2011-10-01','2011-12-24');
+	$by_week['2010'] = $uni->kpi_pregnant_by_week('2010-10-01','2010-12-24');
+	$by_week['2009'] = $uni->kpi_pregnant_by_week('2009-10-01','2009-12-24');
+	include 'templates/kpi_pregs_week.htm';
 	break;
 	
 	case 'missing_extra':

@@ -129,10 +129,13 @@ class alpro {
 	function insertMilkingTime($cow,$date,$am,$id_am,$pm,$id_pm,$mpc_am,$mpc_pm) {
 		if($cow == 0) $test = $this->queryRow("SELECT * FROM alpro WHERE date='".mysql_real_escape_string($date)."' AND cow=0 AND am='".$am."' AND pm='".$pm."' AND stall_am='".$mpc_am."' AND stall_pm='".$mpc_pm."'");
 		else $test = $this->queryRow("SELECT * FROM alpro WHERE date='".mysql_real_escape_string($date)."' AND cow='".$cow."'");
-		if($test && $cow>0) mysql_query("UPDATE alpro SET `am`='".mysql_real_escape_string($am)."',`id_am`='".mysql_real_escape_string($id_am)."', `pm`='".mysql_real_escape_string($pm)."',`id_pm`='".mysql_real_escape_string($id_pm)."', stall_am=".mysql_real_escape_string($mpc_am).", stall_pm=".mysql_real_escape_string($mpc_pm)." WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."' LIMIT 1") or die(mysql_error());
-		else mysql_query("INSERT IGNORE INTO alpro (`cow`,`date`,`am`,`pm`,`stall_am`,`stall_pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($pm)."','".mysql_real_escape_string($mpc_am)."','".mysql_real_escape_string($mpc_pm)."')") or die(mysql_error());
+		if($test && $cow>0) {
+			// Don't overwrite existing milking times
+			// if($test['pm'] =='')
+			mysql_query("UPDATE alpro SET `am`='".mysql_real_escape_string($am)."',`id_am`='".mysql_real_escape_string($id_am)."', `id_pm`='".mysql_real_escape_string($id_pm)."', stall_am=".mysql_real_escape_string($mpc_am).", `pm`='".mysql_real_escape_string($pm)."',  stall_pm=".mysql_real_escape_string($mpc_pm)." WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."' LIMIT 1") or die(mysql_error());
+		} else mysql_query("INSERT IGNORE INTO alpro (`cow`,`date`,`am`,`pm`,`stall_am`,`stall_pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($pm)."','".mysql_real_escape_string($mpc_am)."','".mysql_real_escape_string($mpc_pm)."')") or die(mysql_error());
 		return true;
-}
+	}
 	
 	function actTag($cow) {
 		return $this->odbcFetchAll("SELECT * FROM TblCowAct WHERE CowNo=".$cow);
@@ -244,7 +247,8 @@ class alpro {
 	}
 	
 	function resetTimesToday() {
-		mysql_query("UPDATE alpro SET am='', PM='' WHERE date='".date('Y-m-d')."'");
+		mysql_query("UPDATE alpro SET am='', PM='', id_am='',id_pm='' WHERE cow > 0 AND date='".date('Y-m-d')."'") or die(mysql_error());
+		mysql_query("DELETE FROM alpro WHERE cow=0 AND date='".date('Y-m-d')."'");
 		$this->copyMilkingTimes();
 		$this->fetchCutIDTimes();
 	}
@@ -285,7 +289,9 @@ class alpro {
 				if($cow['MPCToday2'] != 0) $cow['MPCToday2'] = $cow['MPCToday2'] - 1079;
 				//echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
 				if(!empty($cow['am']) OR !empty($cow['id_am']) OR !empty($cow['pm']) OR !empty($cow['id_pm'])) {
-					if(date('U') - strtotime($cow['am']) < 3700 AND $cow['pm'] == '') {
+					if($cow['am'] == '' AND date('U') - strtotime($cow['id_am']) < 3700 AND $cow['pm'] == '') {
+						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
+					} elseif(date('U') - strtotime($cow['am']) < 3700 AND date('U') - strtotime($cow['id_am']) < 3700 AND $cow['pm'] == '') {
 						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
 					} elseif(strtotime($cow['pm']) < date('U')) {
 						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
