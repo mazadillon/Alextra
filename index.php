@@ -139,6 +139,24 @@ switch($_GET['a']) {
 	include 'templates/kpi_pregs_week.htm';
 	break;
 	
+	case 'kpi_heifer_losses':
+	for($i=2001;$i < date('Y');$i++) {
+		$data[$i] = $uni->kpi_heifer_losses($i);
+	}
+	include 'templates/kpi_heifer_losses.htm';
+	break;
+	
+	case 'kpi_mastitis_cases':
+	for($i=2010;$i < date('Y');$i++) {
+		$data[$i] = $uni->kpi_mastitis_cases($i);
+	}
+	include 'templates/kpi_mastitis_cases.htm';
+	break;
+	
+	case 'kpi_homebred':
+	print_r($uni->kpi_homebred());
+	break;
+	
 	case 'missing_extra':
 	if(!isset($_GET['date'])) $_GET['date'] = false;
 	$data = $alpro->fetchMissingExtra($_GET['date']);

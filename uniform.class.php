@@ -188,6 +188,22 @@ class uniform {
 		return $johnes;
 	}
 	
+	function cowJohnesStatus($cow) {
+		$condition = $this->lookupHealthEvent('Johnes Test');
+		$dierid = $this->dierid($cow);
+		$johnes = $this->odbcFetchAll("SELECT DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING FROM DIER_ZIEKTE WHERE DIERID='".$dierid."' AND CODEZIEKTE =".$condition['CODEZIEKTE']." ORDER BY DATUMZIEKTE ASC");
+		if($johnes) {
+			if(isset($johnes['TOELICHTING'])) {
+				if($johnes['TOELICHTING'] >= 20) return true;
+			} else {
+				foreach($johnes as $test) {
+					if($test['TOELICHTING'] >= 20) return true;
+				}
+			}
+		}
+		return false;
+	}
+	
 	function johnesHerdwise() {
 		$condition = $this->lookupHealthEvent('Johnes Test');
 		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE STATUS < 9 AND STATUS > 1 AND LACTATIENUMMER >= 1");
@@ -397,6 +413,7 @@ class uniform {
 			$cow['name'] = $data['NAAM'];
 			$cow['status'] = $this->config['status'][$data['STATUS']];
 			$cow['dim'] = round((time() - strtotime($data['LAATSTEKALFDATUM'])) / 86400,0);
+			$cow['johnes'] = $this->cowJohnesStatus($number);
 			if(strtotime($data['LAATSTEINSDATUM']) > strtotime($data['LAATSTETOCHTDATUM'])) {
 				$cow['heat'] = $data['LAATSTEINSDATUM'];
 				$sire_name = $this->odbcFetchAll("SELECT NAAM FROM DIER WHERE DIERID = ".$data['LAATSTEINSID']);
@@ -534,6 +551,28 @@ class uniform {
 		return $return;
 	}
 	
+	function kpi_homebred() {
+		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE STATUS < 9");
+		foreach($data as $cow) {
+			$yob = date('Y',strtotime($cow['GEBOORTEDATUM']));
+			$lact = $cow['LACTATIENUMMER'];
+			if(strpos($cow['LEVENSNUMMER'],'UK262483') !== false OR strpos($cow['LEVENSNUMMER'],'UKSO0611') !== false ) $homebred = 'home';
+			else $homebred = 'bought';
+			if(!isset($return[$yob])) {
+				$return[$yob]['home'] = array('count'=>0,'total_lactations'=>0);
+				$return[$yob]['bought'] = array('count'=>0,'total_lactations'=>0);
+			}
+			$return[$yob][$homebred]['count']++;
+			$return[$yob][$homebred]['total_lactations'] = $lact + $return[$yob][$homebred]['total_lactations'];
+		}
+		foreach($return as $year => $data) {
+			$return[$year]['home']['average_lactations'] = $data['home']['total_lactations'] / $data['home']['count'];
+			$return[$year]['bought']['average_lactations'] = $data['bought']['total_lactations'] / $data['bought']['count'];
+		}
+		ksort($return);
+		return $return;
+	}
+	
 		
 	function kpi_pregnant_by_week($start,$end) {
 		$start = strtotime($start);
@@ -660,6 +699,40 @@ class uniform {
 		$return['died_count'] = $diedcount;
 		$return['died_lact'] = $diedlact/$diedcount;
 		$return['died_age'] = $diedage/$diedcount;
+		return $return;
+	}
+	
+	function kpi_heifer_losses($year) {
+		$born = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE GEBOORTEDATUM >= '".$year."-01-01' AND GEBOORTEDATUM <= '".$year."-12-31' AND DIERSOORT=1 AND (LEVENSNUMMER LIKE 'UK262483%' OR LEVENSNUMMER LIKE '262483%')");
+		$calved_once = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE GEBOORTEDATUM >= '".$year."-01-01' AND GEBOORTEDATUM <= '".$year."-12-31' AND LACTATIENUMMER > 0 AND (LEVENSNUMMER LIKE 'UK262483%' OR LEVENSNUMMER LIKE '262483%')");
+		$calved_twice = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE GEBOORTEDATUM >= '".$year."-01-01' AND GEBOORTEDATUM <= '".$year."-12-31' AND LACTATIENUMMER > 1 AND (LEVENSNUMMER LIKE 'UK262483%' OR LEVENSNUMMER LIKE '262483%')");
+		$survived = $this->odbcFetchAll("SELECT count(*) FROM DIER WHERE GEBOORTEDATUM >= '".$year."-01-01' AND GEBOORTEDATUM <= '".$year."-12-31' AND STATUS < 9 AND (LEVENSNUMMER LIKE 'UK262483%' OR LEVENSNUMMER LIKE '262483%')");
+		$return['year'] = $year;
+		$return['born'] = $born['COUNT'];
+		$return['still_here'] = $survived['COUNT'];
+		$return['calved_once'] = $calved_once['COUNT'];
+		$return['calved_twice'] = $calved_twice['COUNT'];
+		return $return;
+	}
+	
+	function kpi_mastitis_cases($year) {
+		$mastitis = $this->lookupHealthEvent("Clinical Mastitis");
+		$months=array();
+		$return['milking'] = 0;
+		for($i = 1;$i <13;$i++) {
+			$mid_month = strtotime($year.'-'.$i.'-15');
+			$start = date('Y-m-d',$mid_month - 2592000);
+			$end = date('Y-m-d',$mid_month + 2592000);
+			$months[$i]['milking'] = count($this->cowsInMilk($start,$end));
+			$return['milking'] += $months[$i]['milking'];
+			$months[$i]['cases'] = count($this->healthReporting($mastitis['CODEZIEKTE'],$start,$end));
+			$months[$i]['kpi'] = round($months[$i]['cases'] / $months[$i]['milking'] * 100/12,1);
+		}
+		$return['cases'] = count($this->healthReporting($mastitis['CODEZIEKTE'],$year.'-01-01',$year.'-12-31'));
+		$return['months'] = $months;
+		$return['year'] = $year;
+		$return['milking'] = $return['milking'] / 12;
+		$return['kpi'] = round($return['cases'] / $return['milking'] * 100);
 		return $return;
 	}
 	

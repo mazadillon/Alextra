@@ -1,0 +1,16 @@
+<h1>Heifer Losses</h1>
+<table border="1">
+<tr><th>Year</th><th>Heifers Born (Excluding Stillborn)</th><th>Calved In</th><th>Calved 2nd</th><th>Still Here</th>
+</tr>
+<?php
+foreach($data as $year) {
+	echo '<tr>';
+	echo '<td>'.$year['year'].'</td>';
+	echo '<td>'.$year['born'].'</td>';
+	echo '<td>'.$year['calved_once'].' ('.round($year['calved_once']/$year['born']*100,1).'%)</td>';
+	echo '<td>'.$year['calved_twice'].' ('.round($year['calved_twice']/$year['born']*100,1).'%)</td>';
+	echo '<td>'.$year['still_here'].' ('.round($year['still_here']/$year['born']*100,1).'%)</td>';
+	echo '</tr>';
+}
+?>
+</table>

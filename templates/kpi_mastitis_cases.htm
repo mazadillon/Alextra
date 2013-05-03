@@ -1,0 +1,19 @@
+<h1>Mastitis Cases</h1>
+<table border="1">
+<tr><th>Year</th><th>Cases</th><th>In Milk</th><th>KPI</th>
+<?php
+for($i = 1;$i<13;$i++) echo '<th>'.date('M',strtotime('2012-'.$i.'-01')).'</th>';
+echo '</tr>';
+foreach($data as $year) {
+	echo '<tr>';
+	echo '<td>'.$year['year'].'</td>';
+	echo '<td>'.$year['cases'].'</td>';
+	echo '<td>'.round($year['milking'],0).'</td>';
+	echo '<td>'.round($year['kpi'],1).'</td>';
+	foreach($year['months'] as $month) {
+		echo '<td>'.$month['cases'].' / '.$month['milking'].' ('.$month['kpi'].')</td>';
+	}
+	echo '</tr>';
+}
+?>
+</table>
