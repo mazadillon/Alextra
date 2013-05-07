@@ -31,7 +31,7 @@ switch($_GET['a']) {
 	break;
 
 	case 'test':
-	$alpro->scrapeNML();
+	$alpro->mailMissingExtraCows();
 	break;
 	
 	case 'notSeenBulling':

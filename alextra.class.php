@@ -82,27 +82,29 @@ class alpro {
 	}
 	
 	function authenticate() {
-		if(preg_match('/^192.168.7.(\d{1,3})$/',$_SERVER['REMOTE_ADDR'],$matches)) return true;
-		else {
-			if(isset($_COOKIE['pass'])) {
-				$user = $this->queryRow("SELECT * FROM `users` WHERE pass='".mysql_real_escape_string($_COOKIE['pass'])."'");
-				if(!$user) {
-					setcookie("pass",false,time() - 3600);
-					return false;
-				} elseif($user['allowed']==1) {
-					if($user['lastaccess'] != date('Y-m-d')) {
-						mysql_query("UPDATE `users` SET lastaccess='".date('Y-m-d')."' WHERE id='".$user['id']."'");
+		if(isset($_SERVER['REMOTE_ADDR'])) {
+			if(preg_match('/^192.168.7.(\d{1,3})$/',$_SERVER['REMOTE_ADDR'],$matches)) return true;
+			else {
+				if(isset($_COOKIE['pass'])) {
+					$user = $this->queryRow("SELECT * FROM `users` WHERE pass='".mysql_real_escape_string($_COOKIE['pass'])."'");
+					if(!$user) {
+						setcookie("pass",false,time() - 3600);
+						return false;
+					} elseif($user['allowed']==1) {
+						if($user['lastaccess'] != date('Y-m-d')) {
+							mysql_query("UPDATE `users` SET lastaccess='".date('Y-m-d')."' WHERE id='".$user['id']."'");
+						}
+						return true;
 					}
-					return true;
+					else return false;
+				} else {
+					$key = md5(uniqid());
+					mysql_query("INSERT INTO `users` (`hostname`,`pass`) VALUES ('','".$key."')") or die(mysql_error());
+					setcookie("pass", $key, time()+43200000);			
+					return false;
 				}
-				else return false;
-			} else {
-				$key = md5(uniqid());
-				mysql_query("INSERT INTO `users` (`hostname`,`pass`) VALUES ('','".$key."')") or die(mysql_error());
-				setcookie("pass", $key, time()+43200000);			
-				return false;
 			}
-		}
+		} else return true;
 	}
 	
 	function scrapeNML() {
