@@ -48,6 +48,20 @@ switch($_GET['a']) {
 	include 'templates/sort.htm';
 	break;
 	
+	case 'importNML':
+	if(isset($_POST['data'])) $alpro->importNML($_POST['data']);
+	else include 'templates/importnml.htm';
+	break;
+	
+	case 'checkdrys':
+	if(isset($_POST['data'])) {
+		$drys = explode("\n",$_POST['data']);
+		$drys = $uni->checkDryList($drys);
+		foreach($drys as $dry) echo $dry."<br />\n";
+	}
+	else include 'templates/checkdrys.htm';
+	break;
+	
 	case 'eligibleToServe':
 	echo '<h1>Eligible For Service Today</h1>';
 	echo '<p>Namely those not in calf, pregnant, barren or dry which are marked clean and over 40 days calved</p>';

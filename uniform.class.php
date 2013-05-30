@@ -41,6 +41,10 @@ class uniform {
 		$data['needs'] = $this->odbcFetchAll("SELECT NUMMER,STATUS FROM DIER WHERE ACT_TRANSPONDER IS NULL AND LACTATIENUMMER >= 1 AND STATUS != 5 AND STATUS != 6 AND STATUS < 8 AND LAATSTEKALFDATUM < '2012-01-01' ORDER BY NUMMER ASC");
 		return $data;
 	}
+	
+	function cowInfo($cow) {
+		return $this->odbcFetchAll("SELECT * FROM DIER WHERE nummer = ".$cow." AND STATUS < 9");
+	}
 
 	function reconcileActTags() {
 		$alpro_act = $this->alpro->odbcFetchAll("SELECT * FROM TblCowAct WHERE ActivityTagNo IS NOT NULL");
@@ -117,6 +121,33 @@ class uniform {
 		$data['end'] = $end;
 		$data['cows'] = $this->odbcFetchAll("SELECT * FROM DIER WHERE VERWACHTEKALFDATUM >= '".$start."' AND VERWACHTEKALFDATUM <= '".$end."' ORDER BY VERWACHTEKALFDATUM ASC,NUMMER ASC");
 		return $data;
+	}
+	
+	// Takes an array of dry cows by line number
+	// Check if low SCC
+	function checkDryList($drys) {
+		foreach($drys as $i => $dry) {
+			$dry = trim($dry);
+			// Mark Johnes Cows
+			if($this->cowJohnesStatus($dry)) $drys[$i] = $dry.' Johnes';
+			else {
+				// Look for SCC above 100 or case of mastitis in lactation
+				// Johnes cows are excluded as precaution
+				$dierid = $this->dierid($dry);
+				$info = $this->cowInfo($dry);
+				$milk = $this->odbcFetchAll("SELECT * FROM DIER_MELKGIFT_ETMAAL WHERE DIERID=".$dierid." AND DATUM > '".$info['LAATSTEKALFDATUM']."'");
+				if(is_array($milk) && count($milk) > 2) {
+					$flag = false;
+					foreach($milk as $test) {
+						if($test['AANTALCELLEN'] > 200) $flag = true;
+					}
+				} else $flag = true;
+				$mastitis = $this->lookupHealthEvent('Clinical Mastitis');
+				if($this->cowHealth($mastitis['CODEZIEKTE'],$dierid,$info['LAATSTEKALFDATUM'],date('Y-m-d'))) $flag = true;
+				if($flag==false) $drys[$i] = $dry.' Low SCC';
+			}						
+		}
+		return $drys;
 	}
 	
 	function dueEachWeek($start='2012-07-07') {

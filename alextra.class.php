@@ -99,8 +99,9 @@ class alpro {
 					else return false;
 				} else {
 					$key = md5(uniqid());
-					mysql_query("INSERT INTO `users` (`hostname`,`pass`) VALUES ('','".$key."')") or die(mysql_error());
-					setcookie("pass", $key, time()+43200000);			
+					mysql_query("INSERT INTO `users` (`pass`) VALUES ('".$key."')") or die(mysql_error());
+					setcookie("pass", $key, time()+43200000);
+					$_COOKIE['pass'] = $key;
 					return false;
 				}
 			}
@@ -120,6 +121,17 @@ class alpro {
 			$test[0] = $date->format('Y-m-d');
 			mysql_query("INSERT IGNORE into milktests (date,scc,bacto,butter,protein,urea) VALUES ('".$test[0]."','".$test[1]."','".$test[2]."','".$test[3]."','".$test[5]."','".$test[7]."')") or die(mysql_error());
 		}
+	}
+	
+	function importNML($data) {
+		$data = explode("\n",$data);
+		foreach($data as $line) {
+			$test = explode("\t",$line);
+			$date = $this->convertDate($test[0],'db');
+			$test[0] = $date;
+			mysql_query("INSERT IGNORE into milktests (date,scc,bacto,butter,protein,urea) VALUES ('".$test[0]."','".$test[1]."','".$test[2]."','".$test[3]."','".$test[5]."','".$test[7]."')") or die(mysql_error());
+		}
+		echo 'Done';
 	}
 		
 	function queryRow($query) {
@@ -317,9 +329,10 @@ class alpro {
 	}
 	
 	// Convert date from 25/10/2010 to 20101025
-	function convertDate($date) {
+	function convertDate($date,$out='simple') {
 		$date = explode('/',$date);
-		return $date[2].$date[1].$date[0];
+		if($out=='simple') return $date[2].$date[1].$date[0];
+		elseif($out=='db') return $date[2].'-'.$date[1].'-'.$date[0];
 	}
 	
 	function sortedRecent($mins=3) {
