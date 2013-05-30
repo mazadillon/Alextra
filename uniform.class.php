@@ -139,7 +139,7 @@ class uniform {
 				if(is_array($milk) && count($milk) > 2) {
 					$flag = false;
 					foreach($milk as $test) {
-						if($test['AANTALCELLEN'] > 200) $flag = true;
+						if($test['AANTALCELLEN'] > 120) $flag = true;
 					}
 				} else $flag = true;
 				$mastitis = $this->lookupHealthEvent('Clinical Mastitis');
