@@ -1,0 +1,34 @@
+<?php
+echo '<table border="1"><tr><td rowspan="2">Bull</td>';
+foreach($data['weeks'] as $week=>$num) echo '<td colspan="2">'.date('d/m',strtotime(date('Y').'W'.$week)).'</td>';
+echo '<td colspan="2">Total</td>';
+echo '</tr><tr>';
+foreach($data['weeks'] as $week =>$calves) echo '<td>C</td><td>H</td>';
+echo '<td>C</td><td>H</td>';
+echo '</tr>';
+foreach($data['bulls'] as $name => $calves) {
+	$co = 0;
+	$he = 0;
+	echo '<tr><td>'.$name.'</td>';
+	foreach($data['weeks'] as $week =>$num) {
+		if(!isset($calves[$week])) echo '<td colspan="2">&nbsp;</td>';
+		else {
+			$co += $calves[$week]['cows'];
+			$he += $calves[$week]['heifers'];
+			echo '<td>'.$calves[$week]['cows'].'</td>';
+			echo '<td>'.$calves[$week]['heifers'].'</td>';
+		}
+	}
+	echo '<td>'.$co.'</td><td>'.$he.'</td>';
+	echo '</tr>';
+}
+echo '<tr><td>Totals</td>';
+$total = 0;
+foreach($data['weeks'] as $week =>$num) {
+	echo '<td colspan="2">'.$num.'</td>';
+	$total += $num;
+}
+echo '<td colspan="2">'.$total.'</td>';
+echo '</tr>';
+echo '</table>';
+?>

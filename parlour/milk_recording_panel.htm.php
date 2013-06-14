@@ -21,4 +21,5 @@ if($data) {
 	echo '</table>';
 } else echo '<br />Ready to start';
 echo '</div>';
+echo '<h1 class="clock">'.date('H:i').'</h1>';
 ?>

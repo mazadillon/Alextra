@@ -48,6 +48,13 @@ switch($_GET['a']) {
 	include 'templates/sort.htm';
 	break;
 	
+	case 'calvesExpectedByWeek':
+	echo '<h1>Calves Expected Each Week From Now</h1>';
+	echo '<p>Only those confirmed PD+ are shown, assumes last bull served with has held (may not be true for all)</p>';
+	$data = $uni->calvesExpectedByWeek();
+	include 'templates/calvesbyweek.htm';
+	break;
+	
 	case 'importNML':
 	if(isset($_POST['data'])) $alpro->importNML($_POST['data']);
 	else include 'templates/importnml.htm';

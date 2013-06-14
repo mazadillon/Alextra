@@ -68,6 +68,14 @@ switch($_GET['a']) {
 	case 'milking':
 	$milking_status = $alpro->milkingTotal($alpro->currentMilking());
 	$milking_speed = $alpro->milkingSpeed();
+	$numberCowsInMilk = $alpro->numberCowsInMilk();
+	$latestid = $alpro->latestID();
+	if($numberCowsInMilk['COUNT'] - $milking_status < 20) {
+		if(time()-strtotime($latestid) > 3600) {
+			include 'panel_recordings.htm.php';
+			exit;
+		} else $cowsLeftToMilk = $alpro->cowsLeftToMilk();
+	}
 	$data = $alpro->jogglerBasic();
 	$sorted = $alpro->sortedRecent();
 	include 'milking_panel.htm.php';
@@ -83,6 +91,8 @@ switch($_GET['a']) {
 	case 'serving':
 	$milking_status = $alpro->milkingTotal($alpro->currentMilking());
 	$milking_speed = $alpro->milkingSpeed();
+	$latestid = $alpro->latestID();
+	$numberCowsInMilk = $alpro->numberCowsInMilk();
 	$data = $alpro->jogglerServing(20);
 	include 'milking_panel.htm.php';
 	break;

@@ -1,11 +1,15 @@
 <?php
 ERROR_REPORTING('E_NONE');
 include 'reload.htm';
-//print_r($data);
-if((is_array($data) AND (time() - strtotime($data[0]['id_'.$data[0]['milking']]) < 3600)) OR $_GET['force']) {
-	echo $milking_status.' cows milked so far. ';
+if((is_array($data) AND (time() - strtotime($latestid) < 3600)) OR $_GET['force']) {
+	echo $milking_status.' / '.$numberCowsInMilk['COUNT'].' cows milked so far. ';
 	echo $milking_speed['speed'].' seconds per cow. '.$milking_speed['cph'].' cows per hour. Rotation time '.$milking_speed['platform'];
 	if(isset($sorted) && $sorted) echo '<div style="font-size:2em;border:1px dashed black;background-color:yellow;padding:5px;text-align:center;">Cow '.$sorted['cow'].' sorted, total of '.$sorted['total'].' this milking.</div>';
+	if(isset($cowsLeftToMilk)) {
+		echo '<div style="font-size:1.5em;border:1px dashed black;background-color:yellow;padding:5px;text-align:center;">Left To Milk: ';
+		foreach($cowsLeftToMilk as $cow) echo $cow['NUMMER'].' ';
+		echo '</div>';
+	}
 	echo '<table>';
 	echo '<tr><th>#</th><th>Cow</th><th>Status</th><th>DIM</th><th>Name</th><th>Heat</th></tr>';
 	foreach($data as $id =>	$row) {

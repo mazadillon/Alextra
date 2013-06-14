@@ -1139,12 +1139,31 @@ class alpro {
 			else return $data['id_am'];
 		} else return '';
 	}
+	
+	function numberCowsInMilk() {
+		return $this->uniform->odbcFetchAll("SELECT count(*) FROM DIER WHERE LACTATIENUMMER > 0 AND STATUS < 8");
+	}
+	
+	function cowsLeftToMilk() {
+		$milking = $this->currentMilking();
+		$in_milk = $this->uniform->odbcFetchAll("SELECT * FROM DIER WHERE LACTATIENUMMER > 0 AND STATUS < 8");
+		$milked = $this->queryAll("SELECT cow FROM alpro WHERE date='".date('Y-m-d')."' AND cow!=0 AND (".$milking." != '' OR id_".$milking." !='' OR sort_id_".$milking." != '')");
+		foreach($in_milk as $id => $cow) {
+			foreach($milked as $milk_id => $milk) {
+				if($milk['cow'] == $cow['NUMMER']) {
+					unset($in_milk[$id]);
+					unset($milked[$milk_id]);
+				}
+			}
+		}
+		return $in_milk;
+	}
 		
 	function dashboard() {
 		// Basic overview of key data
 		$data['status'] = $this->dataStatus();
 		$data['status_summary'] = $this->statusSummary();
-		$data['in_milk'] = $this->uniform->odbcFetchAll("SELECT count(*) FROM DIER WHERE LACTATIENUMMER > 0 AND STATUS < 8");
+		$data['in_milk'] = $this->numberCowsInMilk();
 		$data['in_milk'] = $data['in_milk']['COUNT'];
 		$sorted = $this->listSortedCows(date('Y-m-d'));
 		if($sorted) $data['sorted'] = count($sorted);

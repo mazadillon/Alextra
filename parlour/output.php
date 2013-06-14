@@ -22,6 +22,10 @@ div.status {
 <body>
 <?php
 require "../alextra.class.php";
+if(isset($_GET['reset_db_table'])) {
+	mysql_query("TRUNCATE milkrecording");
+	echo 'Done';
+}
 
 if(isset($_GET['all'])) {
 	echo "<div class=\"status\" style=\"background-color:red;color:white;link:white\"><b>All Entries</b><br /><br />(<a href=\"output.php\">Show recent entries</a>)</div>";

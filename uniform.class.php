@@ -131,6 +131,7 @@ class uniform {
 			// Mark Johnes Cows
 			if($this->cowJohnesStatus($dry)) $drys[$i] = $dry.' Johnes';
 			else {
+				/*
 				// Look for SCC above 100 or case of mastitis in lactation
 				// Johnes cows are excluded as precaution
 				$dierid = $this->dierid($dry);
@@ -145,12 +146,13 @@ class uniform {
 				$mastitis = $this->lookupHealthEvent('Clinical Mastitis');
 				if($this->cowHealth($mastitis['CODEZIEKTE'],$dierid,$info['LAATSTEKALFDATUM'],date('Y-m-d'))) $flag = true;
 				if($flag==false) $drys[$i] = $dry.' Low SCC';
+				*/
 			}						
 		}
 		return $drys;
 	}
 	
-	function dueEachWeek($start='2012-07-07') {
+	function dueEachWeek($start='2013-07-07') {
 		$start = strtotime($start);
 		// Go forward one year
 		$end = $start + 31536000;
@@ -163,6 +165,31 @@ class uniform {
 			$start+=604800;
 		}
 		return $weeks;
+	}
+	
+	function calvesExpectedByWeek() {
+		$date = 0;
+		$bulls = array();
+		$weeks = array();
+		$bull_ids = array();
+		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE VERWACHTEKALFDATUM >= '".date('Y-m-d')."' AND VERWACHTEKALFDATUM <= '2013-11-01' AND (STATUS = 5 OR status = 8)");
+		foreach($data as $calf) {
+			if(!isset($bull_ids[$calf['LAATSTEINSID']])) {
+				$bull = $this->odbcFetchAll("SELECT NAAM FROM DIER WHERE DIERID = ".$calf['LAATSTEINSID']);
+				$bull_ids[$calf['LAATSTEINSID']] = $bull['NAAM'];
+				$bulls[$bull['NAAM']] = array();
+				$bull = $bull['NAAM'];
+			} else $bull = $bull_ids[$calf['LAATSTEINSID']];
+			if($calf['LACTATIENUMMER'] == 0) $array = 'heifers';
+			else $array = 'cows';
+			$week = date('W',strtotime($calf['VERWACHTEKALFDATUM']));
+			if(!isset($weeks[$week])) $weeks[$week] = 0;
+			if(!isset($bulls[$bull][$week])) $bulls[$bull][$week] = array('cows'=>0,'heifers'=>0);
+			$bulls[$bull][$week][$array]++;
+			$weeks[$week]++;
+		}
+		ksort($weeks);
+		return array('bulls'=>$bulls,'weeks'=>$weeks);
 	}
 	
 	// Import Johnes test from NML spreadsheet
