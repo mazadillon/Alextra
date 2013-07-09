@@ -939,6 +939,14 @@ class uniform {
 	function lookupTreatment($treatment) {
 		return $this->odbcFetchAll("SELECT * FROM BEHANDELING WHERE OMSCHRIJVING = '".$treatment."'");
 	}
+	
+	function findTwins() {
+		$cows = array();
+		$twins = $this->odbcFetchAll("SELECT DIER_VOORTPLANTING.*,DIER.NUMMER FROM DIER_VOORTPLANTING JOIN DIER ON DIER_VOORTPLANTING.DIERID=DIER.DIERID WHERE DIER_VOORTPLANTING.DATUMBEGIN >= '2012-10-01' AND DIER_VOORTPLANTING.VOORTPLANTINGCODE=7 AND lower(DIER_VOORTPLANTING.OPMERKING) LIKE '%twins%'");
+		foreach($twins as $twin) if(!in_array($twin['NUMMER'],$cows)) $cows[] = $twin['NUMMER'];
+		sort($cows);
+		return $cows;
+	}
 }
 //$data=odbc_exec($uniform,'SELECT * FROM DIER JOIN DIER_ZIEKTE on DIER.DIERID=DIER_ZIEKTE.DIERID JOIN ZIEKTE on ZIEKTE.CODEZIEKTE=DIER_ZIEKTE.CODEZIEKTE WHERE NUMMER=5 ORDER BY DATUMZIEKTE') or die(odbc_errormsg());
 

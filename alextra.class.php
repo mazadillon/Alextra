@@ -192,6 +192,23 @@ class alpro {
 		print_r($stalls);
 	}
 	
+	function countStall($stall) {
+		if($stall > 0 && $stall <= 40) {
+			if(!isset($this->stalls[$stall])) $this->stalls[$stall] = 1;
+			else $this->stalls[$stall]++;
+		}
+	}
+	
+	function detectDodgyStallTags() {
+		$data = $this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."'");
+		foreach($data as $row) {
+			$this->countStall($row['stall_am']);
+			$this->countStall($row['stall_pm']);
+		}
+		ksort($this->stalls);
+		print_r($this->stalls);
+	}
+	
 	function fetchCutIDTimes() {
 		$times = $this->odbcFetchAll("SELECT cowNo,LastCutIDTime,LastCutIDTimeSS FROM TblCowB");
 		foreach($times as $cow) {
@@ -614,7 +631,7 @@ class alpro {
 			$this->copyAlproBackups();
 			$this->mailMissingExtraCows();
 			$this->importCake();
-			$this->scrapeNML();
+			$this->importDairyDataNML();
 			if(date('w') == '1') {
 				$this->backup_database();
 				$this->cakeReport();
@@ -1157,6 +1174,16 @@ class alpro {
 			}
 		}
 		return $in_milk;
+	}
+	
+	function importDairyDataNML() {
+		$data = json_decode(file_get_contents("http://www.dairydata.org/nml/api.php?key=".$this->config['dairydata']),true);
+		if($data['response'] == 'OK') {
+			foreach($data['data'] as $test) {
+				$query = 'INSERT IGNORE INTO milktests (date,scc,bacto,butter,protein) VALUES ("'.$test['date'].'","'.$test['cell'].'","'.$test['bacto'].'","'.$test['butter'].'","'.$test['protein'].'")';
+				mysql_query($query);
+			}
+		}
 	}
 		
 	function dashboard() {

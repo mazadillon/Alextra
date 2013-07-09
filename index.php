@@ -31,7 +31,13 @@ switch($_GET['a']) {
 	break;
 
 	case 'test':
-	$alpro->mailMissingExtraCows();
+	$alpro->importDairyDataNML();
+	break;
+	
+	case 'twins':
+	echo 'The Following Cows Have Been PDed since 1st Oct 2012 with a comment containing "Twins"<br />';
+	$twins = $uni->findTwins();
+	foreach($twins as $cow) echo $cow.'<br />';
 	break;
 	
 	case 'notSeenBulling':
