@@ -31,7 +31,7 @@ switch($_GET['a']) {
 	break;
 
 	case 'test':
-	$alpro->importDairyDataNML();
+	$uni->checkFeed();
 	break;
 	
 	case 'twins':
@@ -229,10 +229,9 @@ switch($_GET['a']) {
 	break;
 	
 	case 'dueSort':
-	if(isset($_GET['date'])) {
-		$cows = $uni->dueSort($_GET['date']);
-		foreach($cows as $cow) echo $cow['NUMMER'].'<br />';
-	} else print_r($uni->dueSort(false));
+	if(!isset($_GET['date'])) $_GET['date'] = date('Y-m-d',strtotime('tomorrow'));
+	$cows = $uni->dueSort($_GET['date']);
+	foreach($cows as $cow) echo $cow['NUMMER'].'<br />';
 	break;
 	
 	case 'needsactmeter':
@@ -341,7 +340,7 @@ switch($_GET['a']) {
 	$conditions[] = $uni->lookupHealthEvent('Ketosis');
 	$conditions[] = $uni->lookupHealthEvent('LDA');
 	$conditions[] = $uni->lookupHealthEvent('Lame');
-	$data = $uni->calvingQsum('2012-06-01','2012-10-01',30,$conditions);
+	$data = $uni->calvingQsum('2013-06-01','2013-07-15',30,$conditions);
 	echo '<table border="1"><tr><th>Cow</th><th>Status</th><th>Calving Date</th><th>Calving Ease</th>';
 	foreach($conditions as $cond) {
 		echo '<th>'.$cond['OMSCHRIJVING'].'</th>';

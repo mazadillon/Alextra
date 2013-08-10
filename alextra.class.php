@@ -153,6 +153,11 @@ class alpro {
 		return true;
 	}
 	
+	function tidyDB() {
+		mysql_query("DELETE FROM alpro WHERE date < '".date('Y-m-d',strtotime('-1 week'))."' AND cow='0'");
+		mysql_query("DELETE FROM alpro WHERE cow > 0 AND am='' AND pm='' and id_am='' and id_pm='' and sort_id_am='' and sort_id_pm=''");
+	}
+	
 	function actTag($cow) {
 		return $this->odbcFetchAll("SELECT * FROM TblCowAct WHERE CowNo=".$cow);
 	}
@@ -630,12 +635,15 @@ class alpro {
 			$this->cullsToAlpro();
 			$this->copyAlproBackups();
 			$this->mailMissingExtraCows();
-			$this->importCake();
+			$this->uniform->checkFeed();
 			$this->importDairyDataNML();
 			if(date('w') == '1') {
 				$this->backup_database();
-				$this->cakeReport();
 			}
+		}
+		if(date('H') == '9') {
+			$this->importCake();
+			$this->dailyCakeReport();
 		}
 		if(date('H') < 3) $this->resetTimesToday();
 	}
@@ -656,6 +664,20 @@ class alpro {
 		$message .= "\nHope that's helpful,\n\nRegards\nMatt Ford";
 		mail($this->config['cake_email'],"Cake Fed At Lime End Farm",$message,"From: ".$this->config['email']);
 	}
+	
+	function dailyCakeReport() {
+		$data = $this->queryAll("SELECT * FROM totalcake ORDER BY date DESC LIMIT 2");
+		$message = "Hi,\n\nHere is the cake that's been fed on the last couple of days according to the computer. ";
+		$message .= "We're assuming it's calibrated correctly, the actual amount fed might be slightly different ";
+		$message .= "but this should be a fairly good guide.\n\n";
+		foreach($data as $day) {
+			$date = strtotime($day['date']);
+			$message .= date('D jS',$date).' '.$day['cake']."kg\n";
+		}
+		$message .= "\nHope that's helpful,\n\nRegards\nMatt Ford";
+		mail($this->config['cake_email'],"Cake Fed At Lime End Farm",$message,"From: ".$this->config['email']);
+	}
+
 	
 	function importCake() {
 		mysql_query("INSERT IGNORE INTO totalcake(date,cake) VALUES('".gmdate('Y-m-d',time()-72000)."','".$this->fedYesterday()."')");
@@ -891,6 +913,7 @@ class alpro {
 	
 	function jogglerBasic() {
 		$milking = $this->currentMilking();
+		$this->tidyDB();
 		$buffer = $this->fetchIDBuffer();
 		$data = $this->fetchRecent($milking,10);
 		if($data && $buffer) $data = array_merge($buffer,$data);

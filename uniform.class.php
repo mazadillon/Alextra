@@ -113,6 +113,32 @@ class uniform {
 		return $data;
 	}
 	
+	function checkFeed() {
+		$cake_alloc = array();
+		// Load cake target feeds into array
+		$cake = $this->alpro->odbcFetchAll("SELECT CowNo,TargetFeed1 FROM TblCowFeed");
+		foreach($cake as $cow) $cake_alloc[$cow['CowNo']] = $cow['TargetFeed1']; 
+		// Load all cows calved in last month which are still in herd
+		$fresh_cows = $this->odbcFetchAll("SELECT * FROM DIER WHERE LAATSTEKALFDATUM >= '".date('Y-m-d',strtotime('-1 month'))."' AND STATUS < 8");
+		if($fresh_cows) {
+			$flagged = array();
+			// Check each cows cake allocation against protocol for heifers/cows
+			foreach($fresh_cows as $cow) {
+				if(array_key_exists($cow['NUMMER'],$cake_alloc)) {
+					if($cow['LACTATIENUMMER'] == 1 && $cake_alloc[$cow['NUMMER']]['TargetFeed1'] != 7) $flagged[] = $cow['NUMMER'];
+					elseif($cow['LACTATIENUMMER'] > 1 && $cake_alloc[$cow['NUMMER']] != 8) $flagged[] = $cow['NUMMER'];
+				} else $flagged = $cow['NUMMER'];
+			}
+			// Send email if cows flagged up
+			if(!empty($flagged)) {
+				$text = "The following fresh cows do have the standard cake set as a target, i.e. 7kg for heifers and 8kg for cows:\n\n";
+				sort($flagged);
+				foreach($flagged as $cow) $text .= $cow."\n";
+				mail($this->config['email'],"Fresh Cow Rations",$text);
+			}
+		}
+	}
+	
 	function dueByWeek($start) {
 		$start = strtotime($start);
 		$end = date('Y-m-d',$start + 518400);
@@ -916,7 +942,7 @@ class uniform {
 	// $dim = Days in milk to look
 	// $conditions = array() of records from ZIEKTE table
 	function calvingQsum($start,$end,$dim,$conditions) {
-		$cows = $this->odbcFetchAll("SELECT NUMMER,DIER.DIERID,STATUS,LAATSTEKALFDATUM,AFKALFVERLOOP_CODE FROM DIER JOIN DIER_MELKGIFT_LACTATIE ON DIER.DIERID=DIER_MELKGIFT_LACTATIE.DIERID WHERE LAATSTEKALFDATUM=DIER_MELKGIFT_LACTATIE.DATUMAFKALVEN AND LAATSTEKALFDATUM > '".$start."' AND LAATSTEKALFDATUM < '".$end."' AND STATUS < 9 ORDER BY NUMMER ASC");
+		$cows = $this->odbcFetchAll("SELECT NUMMER,DIER.DIERID,STATUS,LAATSTEKALFDATUM,AFKALFVERLOOP_CODE FROM DIER JOIN DIER_MELKGIFT_LACTATIE ON DIER.DIERID=DIER_MELKGIFT_LACTATIE.DIERID WHERE LAATSTEKALFDATUM=DIER_MELKGIFT_LACTATIE.DATUMAFKALVEN AND LAATSTEKALFDATUM > '".$start."' AND LAATSTEKALFDATUM < '".$end."' AND STATUS < 9 ORDER BY LAATSTEKALFDATUM ASC");
 		foreach($cows as $id => $cow) {
 			foreach($conditions as $condition) {
 				$cows[$id][$condition['OMSCHRIJVING']] = $this->healthDIM($condition['CODEZIEKTE'],$cow['DIERID'],$dim);
