@@ -3,8 +3,7 @@ ERROR_REPORTING(E_ALL);
 require_once('alextra.class.php');
 
 class uniform {
-	function uniform() {
-		global $alpro;
+	function uniform($alpro) {
 		$this->config =& $alpro->config;
 		$this->alpro = $alpro;
 		$this->unidb = odbc_connect('uniform',$this->config['uniform']['user'],$this->config['uniform']['password']) or die(odbc_error());

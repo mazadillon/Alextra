@@ -24,7 +24,7 @@ class alpro {
 		$this->copyLatestMilkingTimes();
 		$this->sortedCows();
 		$this->checkFlags();
-		$this->uniform = new uniform();
+		$this->uniform = new uniform($this);
 	}
 
 	function connect() {
@@ -357,7 +357,7 @@ class alpro {
 		elseif($out=='db') return $date[2].'-'.$date[1].'-'.$date[0];
 	}
 	
-	function sortedRecent($mins=3) {
+	function sortedRecent($mins=5) {
 		$cow = $this->queryOne("SELECT cow FROM shedding WHERE date = '".date('Y-m-d')."' AND time > '".date('H:i',strtotime('-'.$mins.' mins'))."' ORDER BY time DESC LIMIT 1");
 		if($cow) {
 			$total = $this->queryOne("SELECT count(*) FROM shedding WHERE date = '".date('Y-m-d')."' AND time > '".date('H:i',strtotime('1'.$this->currentMilking()))."'");
@@ -635,8 +635,8 @@ class alpro {
 			$this->cullsToAlpro();
 			$this->copyAlproBackups();
 			$this->mailMissingExtraCows();
-			$this->uniform->checkFeed();
 			$this->importDairyDataNML();
+			$this->uniform->checkFeed();
 			if(date('w') == '1') {
 				$this->backup_database();
 			}

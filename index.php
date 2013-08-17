@@ -2,7 +2,6 @@
 error_reporting(E_ALL);
 require_once 'alextra.class.php';
 require_once 'uniform.class.php';
-$uni = new Uniform();
 if(!isset($_GET['a'])) $_GET['a'] = false;
 switch($_GET['a']) {
 	case 'backup':
