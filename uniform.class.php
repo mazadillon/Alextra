@@ -364,12 +364,12 @@ class uniform {
 		$clean = $this->lookupTreatment('Vet Check OK');
 		$clean = $clean['CODEBEHANDELING'];
 		$cows = array();
-		$to_check = $this->odbcFetchAll("SELECT * FROM DIER WHERE (STATUS = 2 OR STATUS = 3) AND LAATSTEKALFDATUM < '".date('Y-m-d')."' ORDER BY LAATSTEKALFDATUM ASC");
+		$to_check = $this->odbcFetchAll("SELECT * FROM DIER WHERE (STATUS = 2 OR STATUS = 3) AND LAATSTEKALFDATUM < '".date('Y-m-d',strtotime('-21 days'))."' ORDER BY LAATSTEKALFDATUM ASC");
 		foreach($to_check as $cow) {
 			if(count($cows) < $limit) {
 				$dim = (time() - strtotime($cow['LAATSTEKALFDATUM'])) / 86400;
 				$check_21 = $this->healthDIM($looked,$cow['DIERID'],round($dim,0));
-				$check_clean = $this->cowTreatment($clean,$cow['DIERID'],$cow['LAATSTEKALFDATUM'],date('Y-m-d'));
+				$check_clean = $this->cowTreatment($clean,$cow['DIERID'],date('Y-m-d',strtotime($cow['LAATSTEKALFDATUM'])+(60*60*24*21)),date('Y-m-d',strtotime("+1 day")));
 				$check_dirty = $this->healthDIM($dirty,$cow['DIERID'],round($dim,0));
 				//if(!$check_21 AND !$check_clean AND !$check_dirty) $cows[] = $cow['NUMMER'];
 				if(!$check_clean AND !$check_dirty) $cows[] = $cow['NUMMER'];
@@ -395,7 +395,7 @@ class uniform {
 	}
 	
 	function notSeenBulling($date,$days=21) {
-		$start = $this->eligibleToServe($date,30,false);
+		$start = $this->eligibleToServe($date,60,false);
 		$before = date('Y-m-d',strtotime($date) - ($days * 86400));
 		$return['eligible'] = count($start);
 		$return['cows'] = array();
@@ -561,6 +561,38 @@ class uniform {
 		return $eligible;
 	}
 	
+	function goodBreeders() {
+		echo '<h1>Good Breeders</h1>';
+		echo '<p>These cows have always held to first service, for older cows they have held to first service every year since 2010</p>';
+		$cows = $this->odbcFetchAll("SELECT * FROM DIER WHERE LAATSTEKALFDATUM >= '2013-07-01' AND LAATSTEKALFDATUM <= '2013-08-01' AND STATUS=2 AND LACTATIENUMMER > 2 ORDER BY NUMMER ASC");
+		foreach($cows as $id => $cow) {
+			$services = $this->odbcFetchAll("SELECT * FROM DIER_VOORTPLANTING WHERE VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 AND DIERID = '".$cow['DIERID']."' AND DATUMBEGIN >= '2010-01-01' ORDER BY DATUMBEGIN ASC");
+			$prev = false;
+			foreach($services as $service) {
+				//If service didn't hold, save it for max one more service
+				if($service['INS_OK'] != 1) {
+					// If there is a previous failed service, cut from list
+					if($prev != false) {
+						unset($cows[$id]);
+						break;
+					// Otherwise save previous and continue
+					} else $prev = $service;
+				}
+				// If there has been a previous service which didn't hold and wasn't the day before then cut cow from list
+				if($prev != false AND strtotime($service['DATUMBEGIN']) - strtotime($prev['DATUMBEGIN']) >= (60*60*24)) {
+					unset($cows[$id]);
+					break;
+				}
+			}
+			if($prev != false) {
+				unset($cows[$id]);
+				break;
+			}
+			unset($service);
+		}
+		foreach($cows as $cow) echo $cow['NUMMER'].'<br />';
+	}
+	
 	function pregnantJohnes() {
 		$johnes = $this->JohnesCows();
 		$cows = array();
@@ -603,6 +635,34 @@ class uniform {
 			}
 			if($i > 6) echo $cow['NUMMER'].' has '.$i.' generations<br />';
 		}
+	}
+	
+	function conceptionRate($start,$end) {
+		$services = $this->odbcFetchAll("SELECT DIER_VOORTPLANTING.*,DIER.NAAM FROM DIER_VOORTPLANTING JOIN DIER ON DIER_VOORTPLANTING.DIERID_INSEMINATIE = DIER.DIERID WHERE VOORTPLANTINGCODE = 3 AND DATUMBEGIN >= '".date('Y-m-d',strtotime($start))."' AND DATUMBEGIN <= '".date('Y-m-d',strtotime($end))."'");
+		foreach($services as $service) {
+			if(!isset($bulls[$service['NAAM']])) {
+				$bulls[$service['NAAM']] = array('John_Services'=>0,'John_Pregnant'=>0,'Roly_Services'=>0,'Roly_Pregnant'=>0);
+			}
+			if($service['INSEMINATOR_CODE'] == 'John') $bulls[$service['NAAM']]['John_Services']++;
+			elseif($service['INSEMINATOR_CODE'] == 'Roly') $bulls[$service['NAAM']]['Roly_Services']++;
+			if($service['INSEMINATOR_CODE'] == 'John' && $service['INS_OK']==1) $bulls[$service['NAAM']]['John_Pregnant']++;
+			elseif($service['INSEMINATOR_CODE'] == 'Roly' && $service['INS_OK']==1) $bulls[$service['NAAM']]['Roly_Pregnant']++;
+		}
+		$John_preg = $John_serv = $Roly_preg = $Roly_serv = 0;
+		foreach($bulls as $name => $data) {
+			if($data['John_Services']>0) {
+				echo $name.' John '.$data['John_Pregnant'].'/'.$data['John_Services'].' = '.round($data['John_Pregnant']/$data['John_Services']*100,1).'%<Br />';
+				$John_preg = $data['John_Pregnant'] + $John_preg;
+				$John_serv = $data['John_Services'] + $John_serv;
+			}
+			if($data['Roly_Services'] > 0) {
+				$Roly_preg = $data['Roly_Pregnant'] + $Roly_preg;
+				$Roly_serv = $data['Roly_Services'] + $Roly_serv;
+				echo $name.' Roly '.$data['Roly_Pregnant'].'/'.$data['Roly_Services'].' = '.round($data['Roly_Pregnant']/$data['Roly_Services']*100,1).'%<br /><br />';
+			}
+		}
+		echo '<br />John Total '.$John_preg.' / '.$John_serv.' = '.round($John_preg/$John_serv*100,1).'%<br />';
+		echo 'Roly Total '.$Roly_preg.' / '.$Roly_serv.' = '.round($Roly_preg/$Roly_serv*100,1).'%<br />';
 	}
 	
 	// Table DIER_VOORTPLANTING

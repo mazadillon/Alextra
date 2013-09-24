@@ -6,8 +6,12 @@ if((is_array($data) AND (time() - strtotime($latestid) < 3600)) OR $_GET['force'
 	echo $milking_speed['speed'].' seconds per cow. '.$milking_speed['cph'].' cows per hour. Rotation time '.$milking_speed['platform'];
 	if(isset($sorted) && $sorted) echo '<div style="font-size:2em;border:1px dashed black;background-color:yellow;padding:5px;text-align:center;">Cow '.$sorted['cow'].' sorted, total of '.$sorted['total'].' this milking.</div>';
 	if(isset($cowsLeftToMilk)) {
-		echo '<div style="font-size:1.5em;border:1px dashed black;background-color:yellow;padding:5px;text-align:center;">Left To Milk: ';
-		foreach($cowsLeftToMilk as $cow) echo $cow['NUMMER'].' ';
+		echo '<div style="font-size:1.5em;border:1px dashed black;background-color:yellow;padding:5px;text-align:center;">';
+		if(empty($cowsLeftToMilk)) echo '&#9786; Congratulations, you have finished milking! &#9786;';
+		else {
+			echo 'Left To Milk: ';
+			foreach($cowsLeftToMilk as $cow) echo $cow['NUMMER'].' ';
+		}
 		echo '</div>';
 	}
 	echo '<table>';

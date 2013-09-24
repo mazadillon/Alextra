@@ -18,8 +18,8 @@ switch($_GET['a']) {
 	break;
 	
 	case 'cidrSync':
-	$sync = $uni->lookupHealthEvent('CIDR Synchronise');
-	$cows = $uni->healthReporting($sync['CODEZIEKTE'],'2012-09-23','2012-09-25');
+	$sync = $alpro->uniform->lookupHealthEvent('CIDR Synchronise');
+	$cows = $alpro->uniform->healthReporting($sync['CODEZIEKTE'],'2012-09-23','2012-09-25');
 	$numbers = array();
 	foreach($cows as $cow) {
 		$numbers[] = $cow['NUMMER'];
@@ -30,17 +30,24 @@ switch($_GET['a']) {
 	break;
 
 	case 'test':
-	$uni->checkFeed();
+	echo '<h1>2012</h1>';
+	$alpro->uniform->conceptionRate('2012-09-30','2012-12-29');
+	echo '<h1>2013</h1>';
+	$alpro->uniform->conceptionRate('2013-01-01','2013-06-01');
+	break;
+	
+	case 'good_breeders':
+	$alpro->uniform->goodBreeders();
 	break;
 	
 	case 'twins':
 	echo 'The Following Cows Have Been PDed since 1st Oct 2012 with a comment containing "Twins"<br />';
-	$twins = $uni->findTwins();
+	$twins = $alpro->uniform->findTwins();
 	foreach($twins as $cow) echo $cow.'<br />';
 	break;
 	
 	case 'notSeenBulling':
-	$return = $uni->notSeenBulling(date('Y-m-d'));
+	$return = $alpro->uniform->notSeenBulling(date('Y-m-d'));
 	echo '<h1>Not Seen Bulling</h1>';
 	echo 'Anything not seen bulling out of the <b>'.$return['eligible'].'</b> eligible cows.';
 	$cows = $return['cows'];
@@ -49,14 +56,14 @@ switch($_GET['a']) {
 	
 	case 'pregnantJohnes':
 	echo '<h1>Pregnant Cows with Johnes High or Med</h1>';
-	$cows = $uni->pregnantJohnes();
+	$cows = $alpro->uniform->pregnantJohnes();
 	include 'templates/sort.htm';
 	break;
 	
 	case 'calvesExpectedByWeek':
 	echo '<h1>Calves Expected Each Week From Now</h1>';
 	echo '<p>Only those confirmed PD+ are shown, assumes last bull served with has held (may not be true for all)</p>';
-	$data = $uni->calvesExpectedByWeek();
+	$data = $alpro->uniform->calvesExpectedByWeek();
 	include 'templates/calvesbyweek.htm';
 	break;
 	
@@ -68,7 +75,7 @@ switch($_GET['a']) {
 	case 'checkdrys':
 	if(isset($_POST['data'])) {
 		$drys = explode("\n",$_POST['data']);
-		$drys = $uni->checkDryList($drys);
+		$drys = $alpro->uniform->checkDryList($drys);
 		foreach($drys as $dry) echo $dry."<br />\n";
 	}
 	else include 'templates/checkdrys.htm';
@@ -77,7 +84,7 @@ switch($_GET['a']) {
 	case 'eligibleToServe':
 	echo '<h1>Eligible For Service Today</h1>';
 	echo '<p>Namely those not in calf, pregnant, barren or dry which are marked clean and over 40 days calved</p>';
-	$cows = $uni->eligibleToServe(date('Y-m-d'));
+	$cows = $alpro->uniform->eligibleToServe(date('Y-m-d'));
 	include 'templates/sort.htm';
 	break;
 	
@@ -85,26 +92,27 @@ switch($_GET['a']) {
 	if(!isset($_GET['limit'])) $limit = 60;
 	else $limit = $_GET['limit'];
 	echo '<h1>Fresh Cow Checks</h1>';
+	echo '<p>Now shows cows which have not been vet checked as OK after 21 days</p>';
 	echo '<form action="index.php" method="get"><input type="text" name="limit" value="'.$limit.'" />';
 	echo '<input type="hidden" name="a" value="freshCows" /><input type="submit" value="Load" /></form>';
-	$cows = $uni->freshCowChecks($limit);
+	$cows = $alpro->uniform->freshCowChecks($limit);
 	include 'templates/sort.htm';
 	break;
 	
 	case 'aborted':
-	$data = $uni->abortedCows();
+	$data = $alpro->uniform->abortedCows();
 	foreach($data as $abortion) {
 		echo $abortion['NUMMER'].' '.$abortion['DATUMBEGIN']."<br />";
 	}
-	$uni->abortedTree();
+	$alpro->uniform->abortedTree();
 	break;
 	
 	case 'familyTree':
-	$uni->familyTree();
+	$alpro->uniform->familyTree();
 	break;
 	
 	case 'fertilityBreakdown':
-	$data = $uni->fertilityBreakdown();
+	$data = $alpro->uniform->fertilityBreakdown();
 	echo '<h1>Fertility Breakdown</h1>';
 	echo '2011 Calvers: '.$data['round_year']['COUNT'].' ('.$data['round_year_served']['COUNT'].' Served)<br />';
 	echo 'Spring 2012 Calvers: '.$data['round_spring']['COUNT'].' ('.$data['round_spring_served']['COUNT'].' Served)<br />';
@@ -124,63 +132,63 @@ switch($_GET['a']) {
 	
 	case 'dueByWeek':
 	if(!isset($_GET['start'])) {
-		$data = $uni->dueEachWeek();
+		$data = $alpro->uniform->dueEachWeek();
 		include 'templates/dueeachweek.htm';
 	} else {
-		$data = $uni->dueByWeek($_GET['start']);
+		$data = $alpro->uniform->dueByWeek($_GET['start']);
 		include 'templates/duebyweek.htm';
 	}
 	break;
 	
 	case 'kpis':
-	$cull['2013'] = $uni->kpi_cullage(2013);
-	$cull['2012'] = $uni->kpi_cullage(2012);
-	$cull['2011'] = $uni->kpi_cullage(2011);
-	$cull['2010'] = $uni->kpi_cullage(2010);
-	$cull['2009'] = $uni->kpi_cullage(2009);
-	$cull['2008'] = $uni->kpi_cullage(2008);
-	$sixweeks['2012'] = $uni->kpi_preg6weeks('2012-10-01');
-	$sixweeks['2011'] = $uni->kpi_preg6weeks('2011-10-01');
-	$sixweeks['2010'] = $uni->kpi_preg6weeks('2010-10-01');
-	$sixweeks['2009'] = $uni->kpi_preg6weeks('2009-10-01');
-	$sixweeks['2008'] = $uni->kpi_preg6weeks('2008-10-01');
-	$scc = $uni->kpi_scc();
-	$sub = $uni->kpi_submission('2012-10-01',12);
-	$loc['2011'] = $uni->kpi_locomotion('2011-01-01','2011-12-31');
-	$loc['2012'] = $uni->kpi_locomotion('2012-01-01','2012-12-31');
-	$first['2010'] = $uni->kpi_firstService('2010-10-01','2010-12-24');
-	$first['2011'] = $uni->kpi_firstService('2011-10-01','2011-12-24');
-	$first['2012'] = $uni->kpi_firstService('2012-10-01','2012-12-24');
-	$by_week['2012'] = $uni->kpi_pregnant_by_week('2012-10-01','2012-12-24');
-	$by_week['2011'] = $uni->kpi_pregnant_by_week('2011-10-01','2011-12-24');
-	$by_week['2010'] = $uni->kpi_pregnant_by_week('2010-10-01','2010-12-24');
+	$cull['2013'] = $alpro->uniform->kpi_cullage(2013);
+	$cull['2012'] = $alpro->uniform->kpi_cullage(2012);
+	$cull['2011'] = $alpro->uniform->kpi_cullage(2011);
+	$cull['2010'] = $alpro->uniform->kpi_cullage(2010);
+	$cull['2009'] = $alpro->uniform->kpi_cullage(2009);
+	$cull['2008'] = $alpro->uniform->kpi_cullage(2008);
+	$sixweeks['2012'] = $alpro->uniform->kpi_preg6weeks('2012-10-01');
+	$sixweeks['2011'] = $alpro->uniform->kpi_preg6weeks('2011-10-01');
+	$sixweeks['2010'] = $alpro->uniform->kpi_preg6weeks('2010-10-01');
+	$sixweeks['2009'] = $alpro->uniform->kpi_preg6weeks('2009-10-01');
+	$sixweeks['2008'] = $alpro->uniform->kpi_preg6weeks('2008-10-01');
+	$scc = $alpro->uniform->kpi_scc();
+	$sub = $alpro->uniform->kpi_submission('2012-10-01',12);
+	$loc['2011'] = $alpro->uniform->kpi_locomotion('2011-01-01','2011-12-31');
+	$loc['2012'] = $alpro->uniform->kpi_locomotion('2012-01-01','2012-12-31');
+	$first['2010'] = $alpro->uniform->kpi_firstService('2010-10-01','2010-12-24');
+	$first['2011'] = $alpro->uniform->kpi_firstService('2011-10-01','2011-12-24');
+	$first['2012'] = $alpro->uniform->kpi_firstService('2012-10-01','2012-12-24');
+	$by_week['2012'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-24');
+	$by_week['2011'] = $alpro->uniform->kpi_pregnant_by_week('2011-10-01','2011-12-24');
+	$by_week['2010'] = $alpro->uniform->kpi_pregnant_by_week('2010-10-01','2010-12-24');
 	include 'templates/kpis.htm';
 	break;
 	
 	case 'kpi_pregs_week':
-	$by_week['2012'] = $uni->kpi_pregnant_by_week('2012-10-01','2012-12-24');
-	$by_week['2011'] = $uni->kpi_pregnant_by_week('2011-10-01','2011-12-24');
-	$by_week['2010'] = $uni->kpi_pregnant_by_week('2010-10-01','2010-12-24');
-	$by_week['2009'] = $uni->kpi_pregnant_by_week('2009-10-01','2009-12-24');
+	$by_week['2012'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-24');
+	$by_week['2011'] = $alpro->uniform->kpi_pregnant_by_week('2011-10-01','2011-12-24');
+	$by_week['2010'] = $alpro->uniform->kpi_pregnant_by_week('2010-10-01','2010-12-24');
+	$by_week['2009'] = $alpro->uniform->kpi_pregnant_by_week('2009-10-01','2009-12-24');
 	include 'templates/kpi_pregs_week.htm';
 	break;
 	
 	case 'kpi_heifer_losses':
 	for($i=2001;$i < date('Y');$i++) {
-		$data[$i] = $uni->kpi_heifer_losses($i);
+		$data[$i] = $alpro->uniform->kpi_heifer_losses($i);
 	}
 	include 'templates/kpi_heifer_losses.htm';
 	break;
 	
 	case 'kpi_mastitis_cases':
 	for($i=2010;$i < date('Y');$i++) {
-		$data[$i] = $uni->kpi_mastitis_cases($i);
+		$data[$i] = $alpro->uniform->kpi_mastitis_cases($i);
 	}
 	include 'templates/kpi_mastitis_cases.htm';
 	break;
 	
 	case 'kpi_homebred':
-	print_r($uni->kpi_homebred());
+	print_r($alpro->uniform->kpi_homebred());
 	break;
 	
 	case 'missing_extra':
@@ -194,13 +202,13 @@ switch($_GET['a']) {
 	break;
 	
 	case 'locomotionTrim':
-	$cows = $uni->locomotionTrim('2012-03-14',30,100);
+	$cows = $alpro->uniform->locomotionTrim('2012-03-14',30,100);
 	include 'templates/sort.htm';
 	break;
 	
 	case 'trimBeforeDry':
 	echo 'Looking for cows not yet trimmed 80 days before drying off';
-	$cows = $uni->trimBeforeDry(80);
+	$cows = $alpro->uniform->trimBeforeDry(80);
 	include 'templates/sort.htm';
 	break;
 	
@@ -215,7 +223,7 @@ switch($_GET['a']) {
 		if($am) $pm = false;
 		else $pm = true;
 		$count = 0;
-		foreach($_POST['cows'] as $cow) if($uni->sortCow($cow,$_POST['wait'],$_POST['days'],$am,$pm)) $count++;
+		foreach($_POST['cows'] as $cow) if($alpro->uniform->sortCow($cow,$_POST['wait'],$_POST['days'],$am,$pm)) $count++;
 		echo $count.' sorted in uniform.<br /><h2>Transfer to Processor</h2>';
 		echo '<ol><li>Open up Uniform Agri</li>';
 		echo '<li>Go to Links and then Feed / Milk Interface</li>';
@@ -229,24 +237,24 @@ switch($_GET['a']) {
 	
 	case 'dueSort':
 	if(!isset($_GET['date'])) $_GET['date'] = date('Y-m-d',strtotime('tomorrow'));
-	$cows = $uni->dueSort($_GET['date']);
+	$cows = $alpro->uniform->dueSort($_GET['date']);
 	foreach($cows as $cow) echo $cow['NUMMER'].'<br />';
 	break;
 	
 	case 'needsactmeter':
 	include 'templates/header.htm';
-	$data = $uni->needsActMeter();
+	$data = $alpro->uniform->needsActMeter();
 	echo '<h1>Going Round Again and Needing Activity Meters</h1>';
 	echo 'Total: '.count($data['needs']).'. In Use: '.$data['inuse']['COUNT'].'<br />';
 	foreach($data['needs'] as $cow) {
-		echo $cow['NUMMER'].' '.$uni->config['status'][$cow['STATUS']].'<br />';
+		echo $cow['NUMMER'].' '.$alpro->uniform->config['status'][$cow['STATUS']].'<br />';
 		print_r($this->odbcFetchAll("SELECT * FROM TblCowRelActLvlHistory"));
 		exit;
 	}
 	break;
 	
 	case 'reconcileActTags':
-	$uni->reconcileActTags();
+	$alpro->uniform->reconcileActTags();
 	echo 'Done';
 	break;
 	
@@ -263,23 +271,23 @@ switch($_GET['a']) {
 			$cow = explode(',',$cow);
 			$cows[] = array('cow'=>$cow[0],'score'=>$cow[1]);
 		}
-		$uni->importLocomotionScores($_POST['date'],$_POST['handler'],$cows);
+		$alpro->uniform->importLocomotionScores($_POST['date'],$_POST['handler'],$cows);
 	} else include 'templates/locomotionupload.htm';
 	break;
 	
 	case 'importJohnes':
 	if(isset($_POST['data'])) {
-		$uni->importJohnesTest($_POST['data']);
+		$alpro->uniform->importJohnesTest($_POST['data']);
 	} else include 'templates/importjohnes.htm';
 	break;
 	
 	case 'johnes':
-	$data = $uni->johnesHerdwise();
+	$data = $alpro->uniform->johnesHerdwise();
 	include 'templates/johnes_herdwise.htm.php';
 	break;
 	
 	case 'johnes_old':
-	$data = $uni->johnesCows();
+	$data = $alpro->uniform->johnesCows();
 	echo '<h1>High '.count($data['high']).'</h1>';
 	foreach($data['high'] as $cow => $count) {
 		echo '<b>'.$cow.'</b> '.$count.' high';
@@ -330,16 +338,16 @@ switch($_GET['a']) {
 	
 	case 'calvingQsum':
 	error_reporting(0);
-	$conditions[] = $uni->lookupHealthEvent('Milk Fever');
-	$conditions[] = $uni->lookupHealthEvent('Dirty');
-	$conditions[] = $uni->lookupHealthEvent('Clinical Mastitis');
-	$conditions[] = $uni->lookupHealthEvent('Metritis');
-	$conditions[] = $uni->lookupHealthEvent('Prolapse');
-	$conditions[] = $uni->lookupHealthEvent('Retained Afterbirth');
-	$conditions[] = $uni->lookupHealthEvent('Ketosis');
-	$conditions[] = $uni->lookupHealthEvent('LDA');
-	$conditions[] = $uni->lookupHealthEvent('Lame');
-	$data = $uni->calvingQsum('2013-06-01','2013-07-15',30,$conditions);
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Milk Fever');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Dirty');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Clinical Mastitis');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Metritis');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Prolapse');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Retained Afterbirth');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Ketosis');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('LDA');
+	$conditions[] = $alpro->uniform->lookupHealthEvent('Lame');
+	$data = $alpro->uniform->calvingQsum('2013-06-01','2013-07-15',30,$conditions);
 	echo '<table border="1"><tr><th>Cow</th><th>Status</th><th>Calving Date</th><th>Calving Ease</th>';
 	foreach($conditions as $cond) {
 		echo '<th>'.$cond['OMSCHRIJVING'].'</th>';
@@ -350,13 +358,13 @@ switch($_GET['a']) {
 		echo '<tr><td>'.$cow['NUMMER'].'</td>';
 		if($cow['STATUS'] < 5) echo '<td style="background-color: red;">';
 		else echo '<td>';
-		echo $uni->config['status'][$cow['STATUS']].'</td>';
+		echo $alpro->uniform->config['status'][$cow['STATUS']].'</td>';
 		$calvedate = strtotime($cow['LAATSTEKALFDATUM']);
 		$calvingweek = date('W',$calvedate);
 		if(isset($calvingweeks[$calvingweek])) $calvingweeks[$calvingweek]['calved']++;
 		else $calvingweeks[$calvingweek]['calved'] = 1;
 		if($cow['STATUS'] < 5) $calvingweeks[$calvingweek]['minus']++;
-		echo '<td>'.$cow['LAATSTEKALFDATUM'].'</td><td>'.$uni->config['calvingease'][$cow['AFKALFVERLOOP_CODE']].'</td>';
+		echo '<td>'.$cow['LAATSTEKALFDATUM'].'</td><td>'.$alpro->uniform->config['calvingease'][$cow['AFKALFVERLOOP_CODE']].'</td>';
 		if($cow['AFKALFVERLOOP_CODE'] > 1) {
 			$calvcount++;
 			if($cow['STATUS'] < 5) $minuscalvcount++;
@@ -408,10 +416,10 @@ switch($_GET['a']) {
 	break;
 	
 	case 'healthReporting':
-	$condition = $uni->lookupHealthEvent($_GET['condition']);
+	$condition = $alpro->uniform->lookupHealthEvent($_GET['condition']);
 	if($condition) {
 		echo '<h1>'.$condition['OMSCHRIJVING'].'</h1>';
-		$data = $uni->healthReporting($condition['CODEZIEKTE'],'2011-01-01','2012-03-01');
+		$data = $alpro->uniform->healthReporting($condition['CODEZIEKTE'],'2011-01-01','2012-03-01');
 		foreach($data as $cow) {
 			echo $cow['NUMMER'].' '.$cow['DIERID'].' '.$cow['DATUMZIEKTE'].'<br />';
 		}
@@ -419,7 +427,7 @@ switch($_GET['a']) {
 	break;
 
 	case 'footTrimming':
-	$recent = $uni->recentFootTrimmings();
+	$recent = $alpro->uniform->recentFootTrimmings();
 	if(!isset($_POST['routine']) OR $_POST['routine']!='checked') $routine = false;
 	else $routine = true;
 	if(!isset($_POST['days'])) $days = 180;
@@ -434,22 +442,22 @@ switch($_GET['a']) {
 	else $recheck = true;
 	if(!isset($_POST['predry_limit'])) $predry_limit = false;
 	else $predry_limit = $_POST['predry_limit'];
-	if($routine) $data = $uni->footTrimming($days,$routine_limit);
+	if($routine) $data = $alpro->uniform->footTrimming($days,$routine_limit);
 	else $data = array();
 	$routine_count = count($data);
 	if($loco) {
-		$t = $uni->locomotionTrim('2012-03-14',30,100);
+		$t = $alpro->uniform->locomotionTrim('2012-03-14',30,100);
 		if($t)$loco_count = count($t);
 		else $loco_count = 0;
 		$data = array_merge($data,$t);
 	} else $loco_count = 0;
 	if($predry) {
-		$t = $uni->trimBeforeDry(80,$predry_limit);
+		$t = $alpro->uniform->trimBeforeDry(80,$predry_limit);
 		$predry_count = count($t);
 		$data = array_merge($data,$t);
 	} else $predry_count = 0;
 	if($recheck) {
-		$t = $uni->footRechecks();
+		$t = $alpro->uniform->footRechecks();
 		$recheck_count = count($t);
 		$data = array_merge($data,$t);
 	} else $recheck_count = 0;

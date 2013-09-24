@@ -342,7 +342,7 @@ class alpro {
 	
 	function fetchIDBuffer() {
 		$milking = $this->currentMilking();
-		$latest = $this->queryRow("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' AND ".$milking." != '' ORDER BY ".$milking." DESC LIMIT 1");
+		$latest = $this->queryRow("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' AND ".$milking." != '' AND id_".$milking." != '' ORDER BY ".$milking." DESC LIMIT 1");
 		if($latest) {
 			$data = $this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' AND ".$milking." = '' AND id_".$milking." >='".$latest['id_'.$milking]."' ORDER BY id_".$milking." DESC");
 			if($data) return $data;
@@ -635,7 +635,6 @@ class alpro {
 			$this->cullsToAlpro();
 			$this->copyAlproBackups();
 			$this->mailMissingExtraCows();
-			$this->importDairyDataNML();
 			$this->uniform->checkFeed();
 			if(date('w') == '1') {
 				$this->backup_database();
@@ -643,6 +642,7 @@ class alpro {
 		}
 		if(date('H') == '9') {
 			$this->importCake();
+			$this->importDairyDataNML();
 			$this->dailyCakeReport();
 		}
 		if(date('H') < 3) $this->resetTimesToday();
@@ -1186,8 +1186,8 @@ class alpro {
 	
 	function cowsLeftToMilk() {
 		$milking = $this->currentMilking();
-		$in_milk = $this->uniform->odbcFetchAll("SELECT * FROM DIER WHERE LACTATIENUMMER > 0 AND STATUS < 8");
-		$milked = $this->queryAll("SELECT cow FROM alpro WHERE date='".date('Y-m-d')."' AND cow!=0 AND (".$milking." != '' OR id_".$milking." !='' OR sort_id_".$milking." != '')");
+		$in_milk = $this->uniform->odbcFetchAll("SELECT * FROM DIER WHERE LACTATIENUMMER > 0 AND STATUS < 8 ORDER BY NUMMER ASC");
+		$milked = $this->queryAll("SELECT cow FROM alpro WHERE date='".date('Y-m-d')."' AND cow!=0 AND (".$milking." != '' OR id_".$milking." !='' OR sort_id_".$milking." != '') ORDER BY cow ASC");
 		foreach($in_milk as $id => $cow) {
 			foreach($milked as $milk_id => $milk) {
 				if($milk['cow'] == $cow['NUMMER']) {
