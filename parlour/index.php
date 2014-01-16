@@ -94,6 +94,7 @@ switch($_GET['a']) {
 	$latestid = $alpro->latestID();
 	$numberCowsInMilk = $alpro->numberCowsInMilk();
 	$data = $alpro->jogglerServing(20);
+	$sorted = $alpro->sortedRecent();
 	include 'milking_panel.htm.php';
 	break;
 	

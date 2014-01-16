@@ -17,6 +17,10 @@ switch($_GET['a']) {
 	$alpro->csvSearch('2');
 	break;
 	
+	case 'neospora':
+	$alpro->uniform->neosporaCows();
+	break;
+	
 	case 'cidrSync':
 	$sync = $alpro->uniform->lookupHealthEvent('CIDR Synchronise');
 	$cows = $alpro->uniform->healthReporting($sync['CODEZIEKTE'],'2012-09-23','2012-09-25');
@@ -29,15 +33,86 @@ switch($_GET['a']) {
 	include 'templates/sort.htm';
 	break;
 
-	case 'test':
-	echo '<h1>2012</h1>';
-	$alpro->uniform->conceptionRate('2012-09-30','2012-12-29');
+	case 'conception':
 	echo '<h1>2013</h1>';
-	$alpro->uniform->conceptionRate('2013-01-01','2013-06-01');
+	$alpro->uniform->conceptionRate('2013-10-01','2013-11-22');
+	echo '<h1>2013 Most Recent</h1>';
+	$alpro->uniform->conceptionRate('2013-11-15','2013-11-22');
+	break;
+	
+	case 'conceptionByDay':
+	$alpro->uniform->conceptionRateByDay('2013-10-01','2013-12-31');
+	$alpro->uniform->conceptionRateByDay('2012-10-01','2012-12-31');
+	break;
+	
+	case 'kpi_blockStats':
+	echo '<h1>Whole Herd</h1>';
+	$blocks = array(2013,2012,2011,2010);
+	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
+	foreach($blocks as $block) {
+		$data = $alpro->uniform->kpi_blockStats($block.'-06-01',$block.'-12-31');
+		echo '<tr><td>'.$block.'</td>';
+		foreach($data as $item) echo '<td>'.$item.'</td>';
+		echo '</tr>';
+	}
+	echo '<tr><th>2014</th>';
+	$prediction = $alpro->uniform->kpi_expectedBlockStats('2013-10-01','2013-12-31');
+	foreach($prediction as $item) echo '<th>'.$item.'</th>';
+	echo '</tr>';
+	echo '</table>';
+	
+	echo '<h1>Heifers</h1>';
+	$blocks = array(2013,2012,2011,2010);
+	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
+	foreach($blocks as $block) {
+		$data = $alpro->uniform->kpi_blockStats($block.'-06-01',$block.'-12-31',1);
+		echo '<tr><td>'.$block.'</td>';
+		foreach($data as $item) echo '<td>'.$item.'</td>';
+		echo '</tr>';
+	}
+	echo '</table>';
+	echo '<h1>Second Calvers</h1>';
+	$blocks = array(2013,2012,2011,2010);
+	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
+	foreach($blocks as $block) {
+		$data = $alpro->uniform->kpi_blockStats($block.'-06-01',$block.'-12-31',2);
+		echo '<tr><td>'.$block.'</td>';
+		foreach($data as $item) echo '<td>'.$item.'</td>';
+		echo '</tr>';
+	}
+	echo '</table>';
+	echo '<h1>Cows (Excluding Heifers)</h1>';
+	$blocks = array(2013,2012,2011,2010);
+	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
+	foreach($blocks as $block) {
+		$data = $alpro->uniform->kpi_blockStats($block.'-06-01',$block.'-12-31',"cows");
+		echo '<tr><td>'.$block.'</td>';
+		foreach($data as $item) echo '<td>'.$item.'</td>';
+		echo '</tr>';
+	}
+	echo '</table>';
+	break;
+	
+	case 'kpi_served_by_day':
+	$data_2013 = $alpro->uniform->kpi_served_by_day('2013-10-01','2013-12-31');
+	$data_2012 = $alpro->uniform->kpi_served_by_day('2012-10-01','2012-12-31');
+	echo '<table border="1"><tr><th>Date</th><th>Served 2012</th><th>Served 2013</th></tr>';
+	foreach($data_2012 as $day => $count) {
+		echo '<td>'.$day.'</td><td>'.$count.'</td><td>';
+		$date = date('Y-m-d',strtotime($day. ' + 1 year'));
+		if(isset($data_2013[$date])) echo $data_2013[$date];
+		else echo '&nbsp;';
+		echo "</td><tr>\n";
+	}
+	echo '</table>';
 	break;
 	
 	case 'good_breeders':
 	$alpro->uniform->goodBreeders();
+	break;
+	
+	case 'test':
+	$alpro->importDairyDataNML();
 	break;
 	
 	case 'twins':
@@ -141,28 +216,39 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpis':
+	$start = microtime(true);
 	$cull['2013'] = $alpro->uniform->kpi_cullage(2013);
 	$cull['2012'] = $alpro->uniform->kpi_cullage(2012);
 	$cull['2011'] = $alpro->uniform->kpi_cullage(2011);
-	$cull['2010'] = $alpro->uniform->kpi_cullage(2010);
-	$cull['2009'] = $alpro->uniform->kpi_cullage(2009);
-	$cull['2008'] = $alpro->uniform->kpi_cullage(2008);
+	$section[0] = microtime(true);
+	$sixweeks['2013'] = $alpro->uniform->kpi_preg6weeks('2013-10-01');
 	$sixweeks['2012'] = $alpro->uniform->kpi_preg6weeks('2012-10-01');
 	$sixweeks['2011'] = $alpro->uniform->kpi_preg6weeks('2011-10-01');
-	$sixweeks['2010'] = $alpro->uniform->kpi_preg6weeks('2010-10-01');
-	$sixweeks['2009'] = $alpro->uniform->kpi_preg6weeks('2009-10-01');
-	$sixweeks['2008'] = $alpro->uniform->kpi_preg6weeks('2008-10-01');
+	$section[] = microtime(true);
 	$scc = $alpro->uniform->kpi_scc();
-	$sub = $alpro->uniform->kpi_submission('2012-10-01',12);
+	$section[] = microtime(true);
+	//$sub = $alpro->uniform->kpi_submission('2013-10-01',12);
+	$section[] = microtime(true);
 	$loc['2011'] = $alpro->uniform->kpi_locomotion('2011-01-01','2011-12-31');
 	$loc['2012'] = $alpro->uniform->kpi_locomotion('2012-01-01','2012-12-31');
-	$first['2010'] = $alpro->uniform->kpi_firstService('2010-10-01','2010-12-24');
+	$section[] = microtime(true);
 	$first['2011'] = $alpro->uniform->kpi_firstService('2011-10-01','2011-12-24');
 	$first['2012'] = $alpro->uniform->kpi_firstService('2012-10-01','2012-12-24');
+	$first['2013'] = $alpro->uniform->kpi_firstService('2013-10-01','2013-12-24');
+	$section[] = microtime(true);
+	$by_week['2013'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-24');
 	$by_week['2012'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-24');
-	$by_week['2011'] = $alpro->uniform->kpi_pregnant_by_week('2011-10-01','2011-12-24');
-	$by_week['2010'] = $alpro->uniform->kpi_pregnant_by_week('2010-10-01','2010-12-24');
+	$section[] = microtime(true);
+	foreach($section as $time) {
+		//echo $time - $start.'<br />';
+		$start = $time;
+	}
 	include 'templates/kpis.htm';
+	break;
+	
+	case 'kpi_submissionRates':
+	$sub = $alpro->uniform->kpi_submission('2013-10-01',12);
+	include 'templates/kpi_submissionRates.htm';
 	break;
 	
 	case 'kpi_pregs_week':
@@ -174,7 +260,7 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpi_heifer_losses':
-	for($i=2001;$i < date('Y');$i++) {
+	for($i=2001;$i <= date('Y');$i++) {
 		$data[$i] = $alpro->uniform->kpi_heifer_losses($i);
 	}
 	include 'templates/kpi_heifer_losses.htm';

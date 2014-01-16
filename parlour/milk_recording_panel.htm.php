@@ -3,7 +3,7 @@ echo '<div>';
 echo $total.' cows milked so far. ';
 echo $milking_speed['speed'].' seconds per cow. '.$milking_speed['cph'].' cows per hour. Rotation time '.$milking_speed['platform'].' ';
 if(isset($_GET['all'])) echo '<a href="index.php?a=newmilkrecording">Recent</a><br />';
-else echo '<a href="index.php?a=newmilkrecording&all=true">Show All</a><br />';
+else echo '<a href="index.php?a=newmilkrecording&all=true">Show All</a> OR totally <a href="output.php?reset_db_table">Reset</a> the milk recording<br />';
 $today = strtotime('1am');
 if($data) {
 	echo '<table style="width:99%;">';

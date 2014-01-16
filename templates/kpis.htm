@@ -29,15 +29,6 @@ foreach($sixweeks as $year => $data) {
 }
 echo '</table>';
 
-echo '<h2>Submission Rates</h2>';
-echo '<p>Rates are based on a 21 day cycle (i.e. only 1/3 of cows come bulling each week), target 90%</p>';
-echo '<table border="1"><tr><th>Week</th><th>Eligible</th><th>Served</th><th>Rate</th></tr>';
-foreach($sub as $date => $data) {
-	echo '<tr><td>'.$date.'</td><td>'.$data['eligible'].'</td><td>'.$data['served'].'</td>';
-	echo '<td>'.round(($data['served']*3)/$data['eligible']*100,1).'%</td></tr>';
-}
-echo '</table>';
-
 echo '<h2>Subclinical Mastitis</h2>';
 echo '<table border="1">';
 echo '<tr><th>Date</th><th>Cows in Milk</th><th>Average SCC</th><th>Weighted SCC</th><th>Cows over 200</th></tr>';

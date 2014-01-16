@@ -43,8 +43,13 @@ class alpro {
 		while($row = odbc_fetch_array($rs)) {
 			$return[] = $row;
 		}
-		if(count($return) == 1) return $return[0];
-		else return $return;
+		return $return;
+	}
+	
+	function odbcFetchRow($query) {
+		$rs=odbc_exec($this->odbc,$query);
+		if(!$rs) exit("Error in SQL: ".odbc_errormsg());
+		else return odbc_fetch_array($rs);
 	}
 	
 	function queryOne($query) {
@@ -159,7 +164,7 @@ class alpro {
 	}
 	
 	function actTag($cow) {
-		return $this->odbcFetchAll("SELECT * FROM TblCowAct WHERE CowNo=".$cow);
+		return $this->odbcFetchRow("SELECT * FROM TblCowAct WHERE CowNo=".$cow);
 	}
 	
 	function debugStallIDs() {
@@ -225,18 +230,18 @@ class alpro {
 				}			
 				if(substr($time,0,2) < 13) $apm = 'am';
 				else $apm = 'pm';
-				echo mysql_query("UPDATE `alpro` SET sort_id_".$apm."='".mysql_real_escape_string($time)."' WHERE cow=".mysql_real_escape_string($cow['cowNo'])." AND date='".mysql_real_escape_string(date('Y-m-d'))."'",$this->mysql) or die(mysql_error());	
+				mysql_query("UPDATE `alpro` SET sort_id_".$apm."='".mysql_real_escape_string($time)."' WHERE cow=".mysql_real_escape_string($cow['cowNo'])." AND date='".mysql_real_escape_string(date('Y-m-d'))."'",$this->mysql) or die(mysql_error());	
 			}
 		}
 	}
 	
 	function fedYesterday() {
-		$data = $this->odbcFetchAll("SELECT UsedYday FROM TblBin WHERE BinNo=1");
+		$data = $this->odbcFetchRow("SELECT UsedYday FROM TblBin WHERE BinNo=1");
 		return round($data['UsedYday']);
 	}
 	
 	function fedToday() {
-		$data = $this->odbcFetchAll("SELECT sum(ConsTodayTotal) as fed FROM QryCowFeeding");
+		$data = $this->odbcFetchRow("SELECT sum(ConsTodayTotal) as fed FROM QryCowFeeding");
 		return round($data['fed']);
 	}
 	
@@ -978,7 +983,7 @@ class alpro {
 					for($i=1;$i < $gap;$i++) {
 						$start = $start + $timing;
 						$stall = $prev['stall_'.$milking] + $i;
-						if($stall == 41) $stall = 1;
+						if($stall >= 41) $stall = 1;
 						//echo $stall.' '.date('H:i:s',$start).' FILLED<br />';
 						if($milking=='am') {
 							$times['am'] = date('H:i:s',$start);
@@ -1181,7 +1186,7 @@ class alpro {
 	}
 	
 	function numberCowsInMilk() {
-		return $this->uniform->odbcFetchAll("SELECT count(*) FROM DIER WHERE LACTATIENUMMER > 0 AND STATUS < 8");
+		return $this->uniform->odbcFetchRow("SELECT count(*) FROM DIER WHERE LACTATIENUMMER > 0 AND STATUS < 8");
 	}
 	
 	function cowsLeftToMilk() {
@@ -1203,7 +1208,7 @@ class alpro {
 		$data = json_decode(file_get_contents("http://www.dairydata.org/nml/api.php?key=".$this->config['dairydata']),true);
 		if($data['response'] == 'OK') {
 			foreach($data['data'] as $test) {
-				$query = 'INSERT IGNORE INTO milktests (date,scc,bacto,butter,protein) VALUES ("'.$test['date'].'","'.$test['cell'].'","'.$test['bacto'].'","'.$test['butter'].'","'.$test['protein'].'")';
+				$query = 'INSERT IGNORE INTO milktests (date,scc,bacto,butter,protein,urea) VALUES ("'.$test['date'].'","'.$test['cell'].'","'.$test['bacto'].'","'.$test['butter'].'","'.$test['protein'].'","'.$test['urea'].'")';
 				mysql_query($query);
 			}
 		}
