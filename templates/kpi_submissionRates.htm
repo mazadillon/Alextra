@@ -7,4 +7,11 @@ foreach($sub as $date => $data) {
 	echo '<td>'.round(($data['served']*3)/$data['eligible']*100,1).'%</td></tr>';
 }
 echo '</table>';
+echo '<table border="1"><tr><th>Week</th><th>Eligible</th><th>Served</th><th>Rate</th></tr>';
+foreach($sub_prev as $date => $data) {
+	echo '<tr><td>'.$date.'</td><td>'.$data['eligible'].'</td><td>'.$data['served'].'</td>';
+	echo '<td>'.round(($data['served']*3)/$data['eligible']*100,1).'%</td></tr>';
+}
+echo '</table>';
+?>
 ?>

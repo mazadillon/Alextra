@@ -1,25 +1,6 @@
 <?php
 echo '<h2>Pregnant By Week</h2>';
-$count = 1;
-echo '<table border="1"><tr><th>Year</th>';
-foreach($by_week['2012'] as $week) {
-	echo '<th>'.$count.'</th>';
-	$count++;
-}
-echo '<th>Total</th></tr>';
-foreach($by_week as $year => $data) {
-	$total = 0;
-	echo '<tr><td>'.$year.'</td>';
-	foreach($data as $week => $count) {
-		echo '<td>'.$count.'</td>';
-		$total += $count;
-	}
-	echo '<td>'.$total.'</td>';
-	echo '</tr>';
-}
-echo '</table>';
-
-
+echo '<a href="/?a=kpi_pregs_week">Here</a>';
 echo '<h2>Pregnant After Six Weeks</h2>';
 echo '<p>Target Minimum 78%</p>';
 echo '<table border="1"><tr><th>Year</th><th>Eligible</th><th>Pregnant</th><th>Percent</th></tr>';

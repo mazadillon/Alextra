@@ -21,6 +21,10 @@ switch($_GET['a']) {
 	$alpro->uniform->neosporaCows();
 	break;
 	
+	case 'weightAnalysis':
+	$alpro->uniform->weightAnalysis('2014-01-01');
+	break;
+	
 	case 'cidrSync':
 	$sync = $alpro->uniform->lookupHealthEvent('CIDR Synchronise');
 	$cows = $alpro->uniform->healthReporting($sync['CODEZIEKTE'],'2012-09-23','2012-09-25');
@@ -43,6 +47,28 @@ switch($_GET['a']) {
 	case 'conceptionByDay':
 	$alpro->uniform->conceptionRateByDay('2013-10-01','2013-12-31');
 	$alpro->uniform->conceptionRateByDay('2012-10-01','2012-12-31');
+	break;
+	
+	case 'importWeights':
+	// Tru-Test Format:
+	// VID,EID,Date,Time,Weight,Comment
+	if(isset($_POST['sent'])) {
+		$data = file($_FILES['csv']['tmp_name']);
+		unset($data[0]);
+		$count = 0;
+		foreach($data as $line) {
+			$row = explode(',',$line);
+			if(substr($row[0],0,2) != 'UK') $row[0] = 'UK'.$row[0];
+			if($alpro->uniform->importWeight($row[2],$row[3],$row[0],$row[4]) !== false) $count++;
+		}
+		echo $count.' weights imported';
+	} else {
+		echo '<h1>Upload Weights From Tru-Test</h1>';
+		echo 'CSV Format: VID,EID,Date,Time,Weight,Comment<br />';
+		echo 'Header row will be ignored<br />';
+		echo '<form action="index.php?a=importWeights" method="post" enctype="multipart/form-data">';
+		echo 'Tru-Test CSV File: <input type="file" name="csv" /> <input type="submit" name="sent" value="Upload" /></form>';
+	}
 	break;
 	
 	case 'kpi_blockStats':
@@ -235,10 +261,6 @@ switch($_GET['a']) {
 	$first['2011'] = $alpro->uniform->kpi_firstService('2011-10-01','2011-12-24');
 	$first['2012'] = $alpro->uniform->kpi_firstService('2012-10-01','2012-12-24');
 	$first['2013'] = $alpro->uniform->kpi_firstService('2013-10-01','2013-12-24');
-	$section[] = microtime(true);
-	$by_week['2013'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-24');
-	$by_week['2012'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-24');
-	$section[] = microtime(true);
 	foreach($section as $time) {
 		//echo $time - $start.'<br />';
 		$start = $time;
@@ -248,14 +270,24 @@ switch($_GET['a']) {
 	
 	case 'kpi_submissionRates':
 	$sub = $alpro->uniform->kpi_submission('2013-10-01',12);
+	$sub_prev = $alpro->uniform->kpi_submission('2012-10-01',12);
 	include 'templates/kpi_submissionRates.htm';
 	break;
 	
 	case 'kpi_pregs_week':
-	$by_week['2012'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-24');
-	$by_week['2011'] = $alpro->uniform->kpi_pregnant_by_week('2011-10-01','2011-12-24');
-	$by_week['2010'] = $alpro->uniform->kpi_pregnant_by_week('2010-10-01','2010-12-24');
-	$by_week['2009'] = $alpro->uniform->kpi_pregnant_by_week('2009-10-01','2009-12-24');
+	$start = microtime();
+	$by_week['2013'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-31');
+	$section[] = microtime(true);
+	$by_week['2012'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-31');
+	$section[] = microtime(true);
+	$by_week['2013 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-31',true);
+	$section[] = microtime(true);
+	$by_week['2012 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-31',true);
+	$section[] = microtime(true);
+	foreach($section as $time) {
+		//echo $time - $start.'<br />';
+		$start = $time;
+	}
 	include 'templates/kpi_pregs_week.htm';
 	break;
 	

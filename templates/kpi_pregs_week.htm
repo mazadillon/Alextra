@@ -28,6 +28,28 @@
     </script>
   </head>
   <body>
+  <?php
+  echo '<h2>Pregnant By Week</h2>';
+echo '<p>Historic data is based on calvings, some will have calved early.</p>';
+$count = 1;
+echo '<table border="1"><tr><th>Year</th>';
+foreach($by_week['2013'] as $week) {
+	echo '<th>'.$count.'</th>';
+	$count++;
+}
+echo '<th>Total</th></tr>';
+foreach($by_week as $year => $data) {
+	$total = 0;
+	echo '<tr><td>'.$year.'</td>';
+	foreach($data as $week => $count) {
+		echo '<td>'.$count.'</td>';
+		$total += $count;
+	}
+	echo '<td>'.$total.'</td>';
+	echo '</tr>';
+}
+echo '</table>';
+?>
     <div id="chart_div" style="width: 900px; height: 500px;"></div>
   </body>
 </html>

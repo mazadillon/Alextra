@@ -154,7 +154,7 @@ class alpro {
 			// Don't overwrite existing milking times
 			// if($test['pm'] =='')
 			mysql_query("UPDATE alpro SET `am`='".mysql_real_escape_string($am)."',`id_am`='".mysql_real_escape_string($id_am)."', `id_pm`='".mysql_real_escape_string($id_pm)."', stall_am=".mysql_real_escape_string($mpc_am).", `pm`='".mysql_real_escape_string($pm)."',  stall_pm=".mysql_real_escape_string($mpc_pm)." WHERE cow='".mysql_real_escape_string($cow)."' AND date='".mysql_real_escape_string($date)."' LIMIT 1") or die(mysql_error());
-		} else mysql_query("INSERT IGNORE INTO alpro (`cow`,`date`,`am`,`pm`,`stall_am`,`stall_pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($pm)."','".mysql_real_escape_string($mpc_am)."','".mysql_real_escape_string($mpc_pm)."')") or die(mysql_error());
+		} else mysql_query("INSERT IGNORE INTO alpro (`cow`,`date`,`am`,`id_am`,`pm`,`id_pm`,`stall_am`,`stall_pm`) VALUES ('".mysql_real_escape_string($cow)."','".mysql_real_escape_string($date)."','".mysql_real_escape_string($am)."','".mysql_real_escape_string($id_am)."','".mysql_real_escape_string($pm)."','".mysql_real_escape_string($id_pm)."','".mysql_real_escape_string($mpc_am)."','".mysql_real_escape_string($mpc_pm)."')") or die(mysql_error());
 		return true;
 	}
 	
@@ -330,11 +330,10 @@ class alpro {
 				$cow['id_pm'] = $this->fixtime($cow['IDTimeTodayMM2'],$cow['IDTimeTodaySS2']);
 				if($cow['MPCToday1'] != 0) $cow['MPCToday1'] = $cow['MPCToday1'] - 1079;
 				if($cow['MPCToday2'] != 0) $cow['MPCToday2'] = $cow['MPCToday2'] - 1079;
-				//echo $cow['CowNo'].' '.$cow['am'].' '.$cow['pm'].'<br />';
 				if(!empty($cow['am']) OR !empty($cow['id_am']) OR !empty($cow['pm']) OR !empty($cow['id_pm'])) {
-					if($cow['am'] == '' AND date('U') - strtotime($cow['id_am']) < 3700 AND $cow['pm'] == '') {
+					if($cow['am'] == '' AND date('U') - strtotime($cow['id_am']) > -3700 AND $cow['pm'] == '') {
 						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
-					} elseif(date('U') - strtotime($cow['am']) < 3700 AND date('U') - strtotime($cow['id_am']) < 3700 AND $cow['pm'] == '') {
+					} elseif(date('U') - strtotime($cow['am']) > -3700 AND date('U') - strtotime($cow['id_am']) > -3700 AND $cow['pm'] == '') {
 						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
 					} elseif(strtotime($cow['pm']) < date('U')) {
 						$this->insertMilkingTime($cow['CowNo'],date('Y-m-d'),$cow['am'],$cow['id_am'],$cow['pm'],$cow['id_pm'],$cow['MPCToday1'],$cow['MPCToday2']);
@@ -636,6 +635,7 @@ class alpro {
 		$this->copyHistoricMilkingTimes();
 		$this->copyActivityData();
 		$this->fetchCutIDTimes();
+		$this->importDairyDataNML();
 		if(date('a') == 'pm' && date('H') == '22') {
 			$this->cullsToAlpro();
 			$this->copyAlproBackups();
@@ -647,7 +647,6 @@ class alpro {
 		}
 		if(date('H') == '9') {
 			$this->importCake();
-			$this->importDairyDataNML();
 			$this->dailyCakeReport();
 		}
 		if(date('H') < 3) $this->resetTimesToday();
@@ -971,7 +970,7 @@ class alpro {
 		$data = $this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' Order by ".$milking);
 		$prev = false;
 		foreach($data as $cow) {
-			if($prev && $cow['stall_'.$milking]>0 AND $prev['stall_'.$milking]>0) {
+			if($prev && $cow['stall_'.$milking]>0 AND $prev['stall_'.$milking]>0 AND $cow[$milking] != '' AND $prev[$milking]!='') {
 				if($cow['stall_'.$milking]>$prev['stall_'.$milking]) $gap = $cow['stall_'.$milking]-$prev['stall_'.$milking];
 				else $gap = $prev['stall_'.$milking] - 40 + $cow['stall_'.$milking];
 				if($gap > 1 && $gap <= 5) {

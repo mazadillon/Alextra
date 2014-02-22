@@ -182,7 +182,7 @@ class uniform {
 		return $drys;
 	}
 	
-	function dueEachWeek($start='2013-07-07') {
+	function dueEachWeek($start='2014-01-01') {
 		$start = strtotime($start);
 		// Go forward one year
 		$end = $start + 31536000;
@@ -195,6 +195,48 @@ class uniform {
 			$start+=604800;
 		}
 		return $weeks;
+	}
+	
+	function weightAnalysis($min_date) {
+		$targets = array(2=>76,3=>110,4=>127,6=>180,12=>340,15=>420,16=>440,18=>490,21=>545,22=>586);
+		$prev = 0;
+		foreach($targets as $month => $weight) {
+			if($month - 1 != $prev && $prev != 0) {
+				$count = $month - $prev;
+				$range = $weight - $targets[$prev];
+				$increment = round($range / $count,0);
+				for($i=1;$i<$count;$i++) {
+					$new = $prev + $i;
+					$old = $prev + $i - 1;
+					$targets[$new] = $targets[$old] + $increment;
+				}
+			}
+			ksort($targets);
+			$prev = $month;
+		}
+		$data = $this->odbcFetchAll("SELECT a.*,DIER.NUMMER,DIER.GEBOORTEDATUM FROM DIER_GEWICHT a JOIN DIER ON a.DIERID=DIER.DIERID WHERE a.DATUM >= '".$min_date."'");
+		$count_on=0;
+		$count_off=0;
+		$output = "['Age','Weight']";
+		foreach($data as $cow) {
+			$dob = strtotime($cow['GEBOORTEDATUM']);
+			$age = round((strtotime($cow['DATUM']) - $dob) / 2592000,0);
+			//echo $cow['NUMMER']. ' '.$cow['GEWICHT'].' at '.$age.' months ';
+			//echo $cow['NUMMER'].','.$cow['GEWICHT'].','.$age.'<br />';
+			$output .= ",\n[ ".$age.' , '.$cow['GEWICHT']." ]";
+			if(isset($targets[$age])) {
+				//echo 'vs '.$targets[$age].' ';
+				if($cow['GEWICHT'] >= 0.95*$targets[$age]) {
+					//echo 'ON<br />';
+					$count_on++;
+				} else {
+					//echo 'BEHIND<br />';
+					$count_off++;
+				}
+			}// else echo '<br />';
+		}
+		//echo $count_on.' on target, '.$count_off.' behind target';
+		include 'templates/weightAnalysisGraph.htm';
 	}
 	
 	function calvesExpectedByWeek() {
@@ -829,17 +871,49 @@ class uniform {
 	}
 	
 		
-	function kpi_pregnant_by_week($start,$end) {
+	function kpi_pregnant_by_week($start,$end,$heifers=false) {
+		set_time_limit(150);
 		$start = strtotime($start);
 		$end = strtotime($end);
 		$return = array();
 		while($end > $start) {
 			$this_end = $start + 604800;
-			$preg = $this->odbcFetchRow("SELECT count(*) FROM DIER_VOORTPLANTING WHERE VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 AND INS_OK = 1 AND DATUMBEGIN < '".date('Y-m-d',$this_end)."' AND DATUMBEGIN >= '".date('Y-m-d',$start)."'");
+			$offset_start = date('Y',$start) - 2;
+			if($heifers) $preg = $this->odbcFetchRow("SELECT count(*) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN < '".date('Y-m-d',$this_end)."' AND DATUMBEGIN >= '".date('Y-m-d',$start)."' AND INS_OK = 1 AND VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 7 AND DIERID NOT IN (SELECT a.DIERID FROM DIER_MELKGIFT_LACTATIE a WHERE DATUMAFKALVEN < '".date('Y-m-d',$end)."' AND  DATUMAFKALVEN > '".date('Y-m-d',$offset_start)."' GROUP BY a.DIERID)");
+			else $preg = $this->odbcFetchRow("SELECT count(*) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN < '".date('Y-m-d',$this_end)."' AND DATUMBEGIN >= '".date('Y-m-d',$start)."' AND INS_OK = 1 AND VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 7 AND DIERID IN (SELECT a.DIERID FROM DIER_MELKGIFT_LACTATIE a WHERE DATUMAFKALVEN < '".date('Y-m-d',$end)."' AND  DATUMAFKALVEN > '".date('Y-m-d',$offset_start)."' GROUP BY a.DIERID)");
 			$return[date('Y-m-d',$start)] = $preg['COUNT'];
 			$start = $this_end;
 		}
 		return $return;
+	}
+	
+	//SELECT count(*) FROM DIER_VOORTPLANTING WHERE VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 7 AND INS_OK = 1 AND DATUMBEGIN < '2012-10-08' AND DATUMBEGIN >= '2012-10-01' AND DIERID NOT IN (SELECT a.DIERID FROM DIER_MELKGIFT_LACTATIE a WHERE DATUMAFKALVEN < '2012-10-01' AND DATUMAFKALVEN > '2010-01-01' GROUP BY a.DIERID)
+	function kpi_calved_by_week($start,$end,$heifers=false) {
+		$start = strtotime($start)+24192000;
+		$end = strtotime($end)+24192000;
+		$return = array();
+		while($end > $start) {
+			$this_end = $start + 604800;
+			if($heifers) $preg = $this->odbcFetchRow("SELECT COUNT(*) FROM DIER_MELKGIFT_LACTATIE WHERE LACTATIENR = 1 AND DATUMAFKALVEN >= '".date('Y-m-d',$start)."' AND DATUMAFKALVEN < '".date('Y-m-d',$this_end)."'");
+			else $preg = $this->odbcFetchRow("SELECT COUNT(*) FROM DIER_MELKGIFT_LACTATIE WHERE LACTATIENR > 1 AND DATUMAFKALVEN >= '".date('Y-m-d',$start)."' AND DATUMAFKALVEN < '".date('Y-m-d',$this_end)."'");
+			$return[date('Y-m-d',$start)] = $preg['COUNT'];
+			$start = $this_end;
+		}
+		return $return;
+	}
+	
+	function import_EID_Bucket() {
+		//DIER.ISO_TRANSPONDER
+	}
+	
+	function importWeight($date,$time,$earnumber,$weight) {
+		$dier = $this->odbcFetchRow("SELECT DIERID FROM DIER WHERE LEVENSNUMMER='".$earnumber."'");
+		if($dier) $dierid = $dier['DIERID'];
+		else return false;
+		if($weight > 0 AND $weight < 2000) {
+			if(odbc_exec($this->unidb,"INSERT INTO DIER_GEWICHT (DIERID,DATUM,TIJDSTIPMETING,GEWICHT,SOURCEID) VALUES (".$dierid.",'".date('Y-m-d',strtotime($date))."','".$time."',".$weight.",'100102')")!== false) return true;
+			else return false;
+		}
 	}
 	
 	// Returns the number of cows per day which have had at least one service
