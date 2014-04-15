@@ -25,6 +25,11 @@ switch($_GET['a']) {
 	$alpro->uniform->weightAnalysis('2014-01-01');
 	break;
 	
+	case 'estrotectCamLatest':
+	if(isset($_GET['brand'])) $alpro->estrotectCamImage("latest-brand.jpg");
+	else $alpro->estrotectCamImage();
+	break;
+	
 	case 'cidrSync':
 	$sync = $alpro->uniform->lookupHealthEvent('CIDR Synchronise');
 	$cows = $alpro->uniform->healthReporting($sync['CODEZIEKTE'],'2012-09-23','2012-09-25');

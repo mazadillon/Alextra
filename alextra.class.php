@@ -441,93 +441,31 @@ class alpro {
 		return $this->queryAll("SELECT * FROM milktests ORDER BY date DESC LIMIT ".$limit);
 	}
 	
-	function oldParseUniformReport() {
-		// NOW REDUNDANT
-		// Generate a report in Uniform with the following fields in this order:
-		// Number, Date of birth, Last Calved date, Status, Last heat, DIM
-		// Last insemination, Last milk recording yield, dry off date,
-		// %Fat LMT, Last SCC,Pregnancy status, Sex
-		
-		// Use automate to set the report to print via PDF Creator which should
-		// be set to automatically convert to text files, give files a name and
-		// place them in the folder specified below. This function reads the data
-		// and stores it in a mysql database
-		
-		$path = 'C:\documents and settings\ford\my documents\export';
-		$mod = 0;
-		foreach(scandir($path) as $file) {
-			if($file != '.' && $file != '..') {
-				$filemtime = filemtime($path.'\\'.$file);
-				if($filemtime > $mod) {
-					$target = $path.'\\'.$file;
-					$mod = $filemtime;
+	function estrotectCam() {
+		$dir = "\\\\revo\\estrotect-cam\\";
+		if(time() - filemtime($dir.'latest.jpg') > 3600) $running = false;
+		else $running = true;
+		if ($dh = opendir($dir)) {
+			while (($file = readdir($dh)) !== false) {
+				if($file!='.' AND $file!='..') {
+					echo substr($file,3,19);
+					if(substr($file,0,3)=='out' && substr($file,-9)=='brand.jpg') {
+						$stamp = strtotime(substr($file,3,19));
+						echo date('Y/m/d H:i:s',$stamp);
+					}
 				}
 			}
-		}		
-		$file = str_replace("\x00",'',substr(file_get_contents($target),37));
-		$file = str_replace("Not pregnant",'Empty',$file);
-		$file = str_replace("Young stock",'Youngstock',$file);
-		$file = explode('Sex',$file);
-		$target = '';
-		unset($file[0]);
-		foreach($file as $data) {
-			$data = explode('%%[Page: ',$data);
-			$target .= $data[0];
-		}
-		$data = preg_split("/Female/",trim($target));
-		$cow = 0;
-		foreach($data as $line) {
-			$line = preg_split("/[\s]+/",trim($line));
-			if(!empty($line[0])) $field = 0;
-			else $field = 1;
-			$cows[$cow]['number'] = $line[$field];
-			$field++;
-			$cows[$cow]['dob'] = $this->convertDate($line[$field]);
-			$field++;
-			if(strpos($line[$field],'/') !== false) {
-				$cows[$cow]['calved'] = $this->convertDate($line[$field]);
-				$field++;
-				$cows[$cow]['status'] = $line[$field];
-				$field++;
-			} else {
-				$cows[$cow]['calved'] = false;
-				$cows[$cow]['status'] = 'Youngstock';
-				$field++;
-			}
-			if(strpos($line[$field],'/') !== false) {
-				$cows[$cow]['heat'] = $this->convertDate($line[$field]);
-				$field = $field + 2;
-			} else {
-				$cows[$cow]['heat'] = false;
-				$field++;
-			}
-			if(strpos($line[$field],'/') !== false) {
-				$cows[$cow]['service'] = $this->convertDate($line[$field]);
-				$field++;
-			} else {
-				$cows[$cow]['service'] = false;
-			}
-			if(is_numeric($line[$field])) {
-				$cows[$cow]['milk'] = $line[$field];
-				$field++;
-			} else $cows[$cow]['milk'] = false;
-			if(strpos($line[$field],'/') !== false) {
-				$cows[$cow]['dry'] = $this->convertDate($line[$field]);
-				$field++;
-			} else {
-				$cows[$cow]['dry'] = false;
-			}
-			if(is_numeric($line[$field])) {
-				$cows[$cow]['fat'] = $line[$field];
-				$field++;
-			} else $cows[$cow]['fat'] = false;
-			if(is_numeric($line[$field])) {
-				$cows[$cow]['scc'] = $line[$field];
-				$field++;
-			} else $cows[$cow]['scc'] = false;
-			$cows[$cow]['pd'] = $line[$field];
-			$cow++;
-		}
+			closedir($dh);
+		} else die("Could not open dir");
+		if($running) echo "Camera currently running";
+		else echo "Camera is currently off";
+	}
+
+	function estrotectCamImage($image = "latest.jpg") {
+		header("Content-Type: image/jpeg");
+		$file = "\\\\revo\\estrotect-cam\\".$image;
+		if(file_exists($file)) readfile($file);
+		else return false;
 	}
 	
 	function importFromUniform() {

@@ -1,0 +1,11 @@
+<?php
+$config['alpro']['user'] = '';
+$config['alpro']['password'] = '';
+$config['uniform']['user'] = '';
+$config['uniform']['password'] = '';
+$config['alpro']['herdno'] = '';
+$config['alpro']['NmrHerdType'] = '';
+$config['email'] = '';
+$config['cake_email'] = "";
+$config['dairydata'] = '';
+?>

@@ -214,6 +214,7 @@ class uniform {
 			ksort($targets);
 			$prev = $month;
 		}
+		print_r($targets);
 		$data = $this->odbcFetchAll("SELECT a.*,DIER.NUMMER,DIER.GEBOORTEDATUM FROM DIER_GEWICHT a JOIN DIER ON a.DIERID=DIER.DIERID WHERE a.DATUM >= '".$min_date."'");
 		$count_on=0;
 		$count_off=0;
@@ -221,21 +222,23 @@ class uniform {
 		foreach($data as $cow) {
 			$dob = strtotime($cow['GEBOORTEDATUM']);
 			$age = round((strtotime($cow['DATUM']) - $dob) / 2592000,0);
+			if($age < 12) {
 			//echo $cow['NUMMER']. ' '.$cow['GEWICHT'].' at '.$age.' months ';
-			//echo $cow['NUMMER'].','.$cow['GEWICHT'].','.$age.'<br />';
+			echo $cow['NUMMER'].','.$cow['GEWICHT'].','.$age.'<br />';
 			$output .= ",\n[ ".$age.' , '.$cow['GEWICHT']." ]";
 			if(isset($targets[$age])) {
-				//echo 'vs '.$targets[$age].' ';
+				//echo ' vs '.$targets[$age].' ';
 				if($cow['GEWICHT'] >= 0.95*$targets[$age]) {
-					//echo 'ON<br />';
+					//echo '<br />';
 					$count_on++;
 				} else {
 					//echo 'BEHIND<br />';
 					$count_off++;
 				}
-			}// else echo '<br />';
+			} else echo '<br />';
+			}
 		}
-		//echo $count_on.' on target, '.$count_off.' behind target';
+		echo $count_on.' on target, '.$count_off.' behind target';
 		include 'templates/weightAnalysisGraph.htm';
 	}
 	
