@@ -13,7 +13,7 @@ foreach($info as $process) {
 }
 if($running) echo 'AlproWin.exe is running';
 else {
-	echo 'AlproWin is not running';
-	echo exec('psexec.exe /acceptEula -i -u Ford -p silver -d C:\Alpro\AlproWin.exe');
+	echo 'AlproWin is not running, starting';
+	pclose(popen("start /B C:\\Alpro\AlproWin.exe", "r"));
 }
 ?>
