@@ -681,10 +681,16 @@ class alpro {
 			}
 			$prev = $time;
 		}
-		$seconds = ($total / $count) * 40;
-		$return['platform'] = floor($seconds/60) . ":" . $seconds % 60; 
-		$return['speed'] = round($true_total / $true_count - 1,0);
-		$return['cph'] = round(3600 / $return['speed'],0);
+		if($count > 0) {
+			$seconds = ($total / $count) * 40;
+			$return['platform'] = floor($seconds/60) . ":" . $seconds % 60; 
+			$return['speed'] = round($true_total / $true_count - 1,0);
+			$return['cph'] = round(3600 / $return['speed'],0);
+		} else {
+			$return['platform'] = 0;
+			$return['speed'] = 0;
+			$return['cph'] = 0;
+		}
 		return $return;
 	}
 	
