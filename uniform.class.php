@@ -214,7 +214,7 @@ class uniform {
 			ksort($targets);
 			$prev = $month;
 		}
-		print_r($targets);
+		//print_r($targets);
 		$data = $this->odbcFetchAll("SELECT a.*,DIER.NUMMER,DIER.GEBOORTEDATUM FROM DIER_GEWICHT a JOIN DIER ON a.DIERID=DIER.DIERID WHERE a.DATUM >= '".$min_date."'");
 		$count_on=0;
 		$count_off=0;
@@ -223,16 +223,16 @@ class uniform {
 			$dob = strtotime($cow['GEBOORTEDATUM']);
 			$age = round((strtotime($cow['DATUM']) - $dob) / 2592000,0);
 			if($age < 12) {
-			//echo $cow['NUMMER']. ' '.$cow['GEWICHT'].' at '.$age.' months ';
-			echo $cow['NUMMER'].','.$cow['GEWICHT'].','.$age.'<br />';
+			echo $cow['NUMMER']. ' '.$cow['GEWICHT'].' at '.$age.' months ';
+			//echo $cow['NUMMER'].','.$cow['GEWICHT'].','.$age.'<br />';
 			$output .= ",\n[ ".$age.' , '.$cow['GEWICHT']." ]";
 			if(isset($targets[$age])) {
-				//echo ' vs '.$targets[$age].' ';
+				echo ' vs '.$targets[$age].' ';
 				if($cow['GEWICHT'] >= 0.95*$targets[$age]) {
-					//echo '<br />';
+					echo '<br />';
 					$count_on++;
 				} else {
-					//echo 'BEHIND<br />';
+					echo 'BEHIND<br />';
 					$count_off++;
 				}
 			} else echo '<br />';
@@ -240,6 +240,20 @@ class uniform {
 		}
 		echo $count_on.' on target, '.$count_off.' behind target';
 		include 'templates/weightAnalysisGraph.htm';
+	}
+	
+	// Import 5 Day Average Weight
+	function importAlproWeights($date) {
+		$data = $this->alpro->odbcFetchAll("select avg(weight) as avg_weight,CowNo,stDev(weight) as stdev,count(weight) as weights FROM TblCowWeight where SessionDateTime>=#".date('Y-m-d',strtotime($date)-432000)."# AND SessionDateTime<=#".date('Y-m-d',strtotime($date))."# GROUP BY CowNo ORDER BY CowNo ASC");
+		foreach($data as $cow) {
+			$earnumber = $this->earNumberFromNumber($cow['CowNo']);
+			$time = gmdate("H:i:s");
+			$weight = round($cow['avg_weight'],0);
+			if($cow['weights'] > 5) {
+				//echo "$date $time $earnumber $weight ".$cow['stdev']." ".$cow['weights']."\n";
+				$this->importWeight($date,$time,$earnumber,$weight);
+			}
+		}
 	}
 	
 	function calvesExpectedByWeek() {
@@ -569,6 +583,12 @@ class uniform {
 		else return false;
 	}
 	
+	function earNumberFromNumber($number) {
+		$dier = $this->odbcFetchRow("SELECT LEVENSNUMMER FROM DIER WHERE NUMMER='".$number."' AND STATUS<9");
+		if($dier) return $dier['LEVENSNUMMER'];
+		else return false;
+	}
+	
 	// Table DIER_MUTATIES
 	// AANAFVOERDOOD:
 	// 3 Died
@@ -604,6 +624,37 @@ class uniform {
 			}
 		}
 		return $eligible;
+	}
+	
+	function gestationLength($calving_period_start,$calving_period_end) {
+		$start = date('Y-m-d',strtotime($calving_period_start));
+		$end = date('Y-m-d',strtotime($calving_period_end));
+		$cows = $this->odbcFetchAll("SELECT * FROM DIER_MELKGIFT_LACTATIE WHERE DATUMAFKALVEN >= '".$start."' AND DATUMAFKALVEN <= '".$end."'");
+		$bulls = array();
+		foreach($cows as $calving) {
+			$calved = strtotime($calving['DATUMAFKALVEN']);
+			$serv_end = date('Y-m-d',$calved-22464000);
+			$serv_start = date('Y-m-d',$calved-25920000);
+			$service = $this->odbcFetchRow("SELECT * FROM DIER_VOORTPLANTING WHERE DIERID=".$calving['DIERID']." AND INS_OK=1 AND DATUMBEGIN>='".$serv_start."' AND DATUMBEGIN<='".$serv_end."'");
+			if($service) {
+				if(!isset($bulls[$service['DIERID_INSEMINATIE']])) $bulls[$service['DIERID_INSEMINATIE']] = array();
+				$days = round(($calved - strtotime($service['DATUMBEGIN'])) / 86400,0);
+				$bulls[$service['DIERID_INSEMINATIE']][] = $days;
+			}
+		}
+		echo 'Average Gestation Lengths for Calvings in period '.$start.' to '.$end;
+		echo "<table><tr><th>Bull</th><th>Count</th><th>Mean</th><th>Median</th><th>Min</th><th>Max</th></tr>";
+		foreach($bulls as $id => $days) {
+			$bull = $this->odbcFetchRow("SELECT * FROM DIER WHERE DIERID='".$id."'");
+			$count = count($days);
+			echo '<tr><td>'.$bull['NAAM'].'</td><td>'.$count.'</td><td>';
+			echo round(array_sum($days)/$count,0);
+			echo '</td><td>';
+			sort($days);
+			echo $days[floor($count/2)];
+			echo '</td><td>'.$days[0].'</td><td>'.$days[$count-1];
+			echo '</td></tr>';
+		}
 	}
 	
 	function goodBreeders() {
@@ -1249,7 +1300,7 @@ class uniform {
 	
 	function findTwins() {
 		$cows = array();
-		$twins = $this->odbcFetchAll("SELECT DIER_VOORTPLANTING.*,DIER.NUMMER FROM DIER_VOORTPLANTING JOIN DIER ON DIER_VOORTPLANTING.DIERID=DIER.DIERID WHERE DIER_VOORTPLANTING.DATUMBEGIN >= '2013-04-01' AND DIER_VOORTPLANTING.VOORTPLANTINGCODE=7 AND lower(DIER_VOORTPLANTING.OPMERKING) LIKE '%twins%'");
+		$twins = $this->odbcFetchAll("SELECT DIER_VOORTPLANTING.*,DIER.NUMMER FROM DIER_VOORTPLANTING JOIN DIER ON DIER_VOORTPLANTING.DIERID=DIER.DIERID WHERE DIER_VOORTPLANTING.DATUMBEGIN >= '2013-10-01' AND DIER_VOORTPLANTING.VOORTPLANTINGCODE=7 AND lower(DIER_VOORTPLANTING.OPMERKING) LIKE '%twins%'");
 		foreach($twins as $twin) if(!in_array($twin['NUMMER'],$cows)) $cows[] = $twin['NUMMER'];
 		sort($cows);
 		return $cows;

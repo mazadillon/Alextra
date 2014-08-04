@@ -70,7 +70,7 @@ switch($_GET['a']) {
 	$milking_speed = $alpro->milkingSpeed();
 	$numberCowsInMilk = $alpro->numberCowsInMilk();
 	$latestid = $alpro->latestID();
-	if($numberCowsInMilk['COUNT'] - $milking_status < 20) {
+	if($numberCowsInMilk['COUNT'] - $milking_status <= 20) {
 		if(time()-strtotime($latestid) > 3600) {
 			include 'panel_recordings.htm.php';
 			exit;
@@ -108,7 +108,7 @@ switch($_GET['a']) {
 	case 'locomotion':
 	$milking_status = $alpro->milkingTotal(date('a'));
 	$milking_speed = $alpro->milkingSpeed();
-	$data = $alpro->locomotionList(5);
+	$data = $alpro->locomotionList(15);
 	include 'locomotion.htm.php';
 	break;
 

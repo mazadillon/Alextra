@@ -224,7 +224,7 @@ class alpro {
 		foreach($times as $cow) {
 			if(empty($cow['LastCutIDTime'])) $time = false;
 			else $time = substr($cow['LastCutIDTime'],11,5).':'.str_pad((int) $cow['LastCutIDTimeSS'],2,"0",STR_PAD_LEFT);
-			if($time && strtotime($time) < time()) {
+			if($time && strtotime($time) < time() + 300) {
 				if(!$this->queryRow("SELECT * FROM alpro WHERE cow='".mysql_real_escape_string($cow['cowNo'])."' AND date='".mysql_real_escape_string(date('Y-m-d'))."'")) {
 					mysql_query("INSERT INTO alpro (cow,date) VALUES ('".mysql_real_escape_string($cow['cowNo'])."','".mysql_real_escape_string(date('Y-m-d'))."')") or die(mysql_error());
 				}			
@@ -442,23 +442,46 @@ class alpro {
 	}
 	
 	function estrotectCam() {
+		include 'templates/header.htm';
 		$dir = "\\\\revo\\estrotect-cam\\";
 		if(time() - filemtime($dir.'latest.jpg') > 3600) $running = false;
 		else $running = true;
 		if ($dh = opendir($dir)) {
-			while (($file = readdir($dh)) !== false) {
-				if($file!='.' AND $file!='..') {
-					echo substr($file,3,19);
-					if(substr($file,0,3)=='out' && substr($file,-9)=='brand.jpg') {
-						$stamp = strtotime(substr($file,3,19));
-						echo date('Y/m/d H:i:s',$stamp);
+			while (($file = readdir($dh)) !== false) $files[] = $file;
+		} else die("Could not open dir");
+		closedir($dh);
+		rsort($files);
+		echo '<table><tr><th>Brand</th><th>Sticker</th><th>Possible Candidates within 5 Mins</th></tr>';
+		foreach($files as $file) {			
+			if($file!='.' AND $file!='..') {
+				if(substr($file,0,3)=='out' && substr($file,-9)=='brand.jpg') {
+					$date = substr($file,3,10);
+					$hour = substr($file,14,2);
+					$min = substr($file,17,2);
+					$sec = substr($file,20,2);				
+					$date = strtotime($date." $hour:$min:$sec");
+					echo '<tr><td><img src="/?a=estrotectCamImage&amp;image='.$file.'" /></td>';
+					echo '<td><img src="/?a=estrotectCamImage&amp;image='.substr($file,0,-10).'.jpg" /></td>';
+					echo '<td>';
+					echo '<h2>Picture Taken '.date('H:i:s \o\n D jS M',$date).'</h2>';
+					$session = date("a",$date);
+					$cows = $this->queryAll("SELECT * FROM alpro WHERE date = '".date("Y-m-d",$date)."' AND ".$session." >= '".date("H:i:s",$date-150)."' AND ".$session." <= '".date("H:i:s",$date+150)."' Order by $session ASC");
+					foreach($cows as $match) {
+						if($match['cow'] != 0) {
+							$status = $this->uniform->panelStatus($match['cow']);
+							echo $match[$session].' <b>'.$match['cow'].'</b> ';
+							echo $status['status'].' ';
+							if($status['SinceHeat'] != false) echo $status['SinceHeat'].' since heat';
+							echo '<br />';
+						}
 					}
+					echo '</td></tr>';
 				}
 			}
-			closedir($dh);
-		} else die("Could not open dir");
-		if($running) echo "Camera currently running";
-		else echo "Camera is currently off";
+		}
+		echo '</table>';
+		//if($running) echo "Camera currently running";
+		//else echo "Camera is currently off";
 	}
 
 	function estrotectCamImage($image = "latest.jpg") {
@@ -572,13 +595,14 @@ class alpro {
 		$this->importFromUniform();
 		$this->copyHistoricMilkingTimes();
 		$this->copyActivityData();
-		$this->fetchCutIDTimes();
 		$this->importDairyDataNML();
+		$this->fetchCutIDTimes();
 		if(date('a') == 'pm' && date('H') == '22') {
 			$this->cullsToAlpro();
 			$this->copyAlproBackups();
 			$this->mailMissingExtraCows();
 			$this->uniform->checkFeed();
+			$this->uniform->importAlproWeights(date('Y-m-d'));
 			if(date('w') == '1') {
 				$this->backup_database();
 			}
@@ -1021,9 +1045,10 @@ class alpro {
 	}
 	
 	// List of the most recent cows through the shedding gate
-	// For all cows force shedding gate to sort everything then manually disable gate
 	function locomotionList($limit) {
-		$data = $this->queryAll("SELECT * FROM shedding WHERE date='".gmdate('Y-m-d')."' ORDER BY time DESC LIMIT ".$limit);
+		$this->fetchCutIDTimes();
+		$milking = $this->currentMilking();
+		$data = $this->queryAll("SELECT * FROM alpro WHERE date='".gmdate('Y-m-d')."' and sort_id_".$milking." != '' ORDER BY sort_id_".$milking." DESC LIMIT ".$limit);
 		return $data;
 	}
 	

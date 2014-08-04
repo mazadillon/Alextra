@@ -47,7 +47,15 @@ if((is_array($data) AND (time() - strtotime($latestid) < 3600)) OR $_GET['force'
 	echo '<table id="tests"><tr><th>Date</th><th>Cell Count</th><th>Bactoscan</th><th>Butterfat</th></tr>';
 	$tests = $alpro->milkTests();
 	foreach($tests as $test) {
-		echo '<tr><td>'.$test['date'].'</td><td>'.$test['scc'].'</td><td>'.$test['bacto'].'</td><td>'.$test['butter']."</td></tr>\n";
+		echo '<tr><td>'.$test['date'].'</td>';
+		if($test['scc'] <= 200) echo '<td style="background-color:green;color:white;">';
+		elseif($test['scc'] > 200 AND $test['scc'] <= 250)  echo '<td style="background-color:orange;color:white;">';
+		else echo '<td style="background-color:red;color:white;">';
+		echo $test['scc'].'</td>';
+		if($test['scc'] <= 25) echo '<td style="background-color:green;color:white;">';
+		elseif($test['scc'] > 25 AND $test['scc'] <= 30)  echo '<td style="background-color:orange;color:white;">';
+		else echo '<td style="background-color:red;color:white;">';
+		echo $test['bacto'].'</td><td>'.$test['butter']."</td></tr>\n";
 	}
 	echo '</table>';
 	echo '<h1 class="clock">'.date('H:i').'</h1>';

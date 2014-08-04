@@ -22,12 +22,20 @@ switch($_GET['a']) {
 	break;
 	
 	case 'weightAnalysis':
-	$alpro->uniform->weightAnalysis('2014-01-01');
+	$alpro->uniform->weightAnalysis('2014-05-01');
 	break;
 	
 	case 'estrotectCamLatest':
 	if(isset($_GET['brand'])) $alpro->estrotectCamImage("latest-brand.jpg");
 	else $alpro->estrotectCamImage();
+	break;
+	
+	case 'estrotectCam':
+	$alpro->estrotectCam();
+	break;
+	
+	case 'estrotectCamImage':
+	$alpro->estrotectCamImage($_GET['image']);
 	break;
 	
 	case 'cidrSync':
@@ -41,17 +49,21 @@ switch($_GET['a']) {
 	sort($cows);
 	include 'templates/sort.htm';
 	break;
+	
+	case 'gestationLength':
+	$alpro->uniform->gestationLength('2013-01-01','2014-04-01');
+	break;
 
 	case 'conception':
-	echo '<h1>2013</h1>';
-	$alpro->uniform->conceptionRate('2013-10-01','2013-11-22');
-	echo '<h1>2013 Most Recent</h1>';
-	$alpro->uniform->conceptionRate('2013-11-15','2013-11-22');
+	echo '<h1>2014</h1>';
+	$alpro->uniform->conceptionRate('2014-03-01','2014-06-05');
+	echo '<h1>2014 Most Recent</h1>';
+	$alpro->uniform->conceptionRate('2014-05-25','2014-06-05');
 	break;
 	
 	case 'conceptionByDay':
-	$alpro->uniform->conceptionRateByDay('2013-10-01','2013-12-31');
-	$alpro->uniform->conceptionRateByDay('2012-10-01','2012-12-31');
+	$alpro->uniform->conceptionRateByDay('2014-03-01','2014-07-20');
+	$alpro->uniform->conceptionRateByDay('2013-03-01','2013-07-10');
 	break;
 	
 	case 'importWeights':
@@ -64,7 +76,9 @@ switch($_GET['a']) {
 		foreach($data as $line) {
 			$row = explode(',',$line);
 			if(substr($row[0],0,2) != 'UK') $row[0] = 'UK'.$row[0];
-			if($alpro->uniform->importWeight($row[2],$row[3],$row[0],$row[4]) !== false) $count++;
+			//$date,$time,$earnumber,$weight)
+			//VID,EID,Weight,Date,Time,Weight Gain
+			if($alpro->uniform->importWeight($row[3],$row[4],$row[0],$row[2]) !== false) $count++;
 		}
 		echo $count.' weights imported';
 	} else {
@@ -125,13 +139,14 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpi_served_by_day':
-	$data_2013 = $alpro->uniform->kpi_served_by_day('2013-10-01','2013-12-31');
-	$data_2012 = $alpro->uniform->kpi_served_by_day('2012-10-01','2012-12-31');
-	echo '<table border="1"><tr><th>Date</th><th>Served 2012</th><th>Served 2013</th></tr>';
-	foreach($data_2012 as $day => $count) {
+	$data_2014 = $alpro->uniform->kpi_served_by_day('2014-04-01','2014-07-14');
+	$data_2013 = $alpro->uniform->kpi_served_by_day('2013-04-01','2013-07-14');
+	//$data_2012 = $alpro->uniform->kpi_served_by_day('2012-10-01','2012-12-31');
+	echo '<table border="1"><tr><th>Date</th><th>Served 2013</th><th>Served 2014</th></tr>';
+	foreach($data_2013 as $day => $count) {
 		echo '<td>'.$day.'</td><td>'.$count.'</td><td>';
 		$date = date('Y-m-d',strtotime($day. ' + 1 year'));
-		if(isset($data_2013[$date])) echo $data_2013[$date];
+		if(isset($data_2014[$date])) echo $data_2014[$date];
 		else echo '&nbsp;';
 		echo "</td><tr>\n";
 	}
@@ -143,11 +158,11 @@ switch($_GET['a']) {
 	break;
 	
 	case 'test':
-	$alpro->importDairyDataNML();
+	//$alpro->uniform->importAlproWeights('2014-06-09');
 	break;
 	
 	case 'twins':
-	echo 'The Following Cows Have Been PDed since 1st Oct 2012 with a comment containing "Twins"<br />';
+	echo 'The Following Cows Have Been PDed since 1st Oct 2013 with a comment containing "Twins"<br />';
 	$twins = $alpro->uniform->findTwins();
 	foreach($twins as $cow) echo $cow.'<br />';
 	break;
@@ -274,8 +289,8 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpi_submissionRates':
-	$sub = $alpro->uniform->kpi_submission('2013-10-01',12);
-	$sub_prev = $alpro->uniform->kpi_submission('2012-10-01',12);
+	$sub = $alpro->uniform->kpi_submission('2014-04-01',12);
+	$sub_prev = $alpro->uniform->kpi_submission('2013-04-01',12);
 	include 'templates/kpi_submissionRates.htm';
 	break;
 	
