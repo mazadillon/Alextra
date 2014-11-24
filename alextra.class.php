@@ -424,10 +424,10 @@ class alpro {
 		return $data;
 	}
 	
-	function mailMissingExtraCows() {
+	function mailMissingExtraCows($message='') {
 		list($missing,$extra) = $this->missingExtraCows();
 		if(count($missing) > 0) {
-			$message = "The following cows appear not to have been milked today (lost collars?):\n";
+			$message .= "The following cows appear not to have been milked today (lost collars?):\n";
 			foreach($missing as $cow) $message .= $cow."\n";
 		}
 		if($extra != false) {
@@ -437,11 +437,11 @@ class alpro {
 		if($message != '') mail($this->config['email'],'Missing or Extra Cows During Today\'s Milking',$message);
 	}
 	
-	function milkTests($limit = 5) {
+	function milkTests($limit = 7) {
 		return $this->queryAll("SELECT * FROM milktests ORDER BY date DESC LIMIT ".$limit);
 	}
 	
-	function estrotectCam() {
+	function estrotectCam($offset=0) {
 		include 'templates/header.htm';
 		$dir = "\\\\revo\\estrotect-cam\\";
 		if(time() - filemtime($dir.'latest.jpg') > 3600) $running = false;
@@ -451,8 +451,10 @@ class alpro {
 		} else die("Could not open dir");
 		closedir($dh);
 		rsort($files);
+		if($offset<count($files)) $files = array_slice($files,$offset,100);
 		echo '<table><tr><th>Brand</th><th>Sticker</th><th>Possible Candidates within 5 Mins</th></tr>';
 		foreach($files as $file) {			
+			$offset++;
 			if($file!='.' AND $file!='..') {
 				if(substr($file,0,3)=='out' && substr($file,-9)=='brand.jpg') {
 					$date = substr($file,3,10);
@@ -471,7 +473,7 @@ class alpro {
 							$status = $this->uniform->panelStatus($match['cow']);
 							echo $match[$session].' <b>'.$match['cow'].'</b> ';
 							echo $status['status'].' ';
-							if($status['SinceHeat'] != false) echo $status['SinceHeat'].' since heat';
+							if($status['SinceHeat'] !== false) echo $status['SinceHeat'].' since heat';
 							echo '<br />';
 						}
 					}
@@ -480,6 +482,7 @@ class alpro {
 			}
 		}
 		echo '</table>';
+		echo '<a href="index.php?a=estrotectCam&amp;offset='.$offset.'">Next Page</a>';
 		//if($running) echo "Camera currently running";
 		//else echo "Camera is currently off";
 	}
@@ -600,9 +603,10 @@ class alpro {
 		if(date('a') == 'pm' && date('H') == '22') {
 			$this->cullsToAlpro();
 			$this->copyAlproBackups();
-			$this->mailMissingExtraCows();
 			$this->uniform->checkFeed();
 			$this->uniform->importAlproWeights(date('Y-m-d'));
+			$alerts = $this->uniform->criticalWeightLossAlert(date('Y-m-d'));
+			$this->mailMissingExtraCows($alerts);
 			if(date('w') == '1') {
 				$this->backup_database();
 			}
@@ -937,39 +941,41 @@ class alpro {
 		$milking = $this->currentMilking();
 		$data = $this->queryAll("SELECT * FROM alpro WHERE date='".date('Y-m-d')."' Order by ".$milking);
 		$prev = false;
-		foreach($data as $cow) {
-			if($prev && $cow['stall_'.$milking]>0 AND $prev['stall_'.$milking]>0 AND $cow[$milking] != '' AND $prev[$milking]!='') {
-				if($cow['stall_'.$milking]>$prev['stall_'.$milking]) $gap = $cow['stall_'.$milking]-$prev['stall_'.$milking];
-				else $gap = $prev['stall_'.$milking] - 40 + $cow['stall_'.$milking];
-				if($gap > 1 && $gap <= 5) {
-					$end = strtotime($cow[$milking]);
-					$start = strtotime($prev[$milking]);
-					$timespan = $end-$start;
-					$timing = $timespan/$gap;
-					//echo $gap.' stalls gap here, time gap '.$timespan.' = '.$timing.'<br />';
-					for($i=1;$i < $gap;$i++) {
-						$start = $start + $timing;
-						$stall = $prev['stall_'.$milking] + $i;
-						if($stall >= 41) $stall = 1;
-						//echo $stall.' '.date('H:i:s',$start).' FILLED<br />';
-						if($milking=='am') {
-							$times['am'] = date('H:i:s',$start);
-							$times['mpc_am'] = $stall;
-							$times['pm'] = '';
-							$times['mpc_pm'] = 0;
-						} else {
-							$times['am'] = '';
-							$times['mpc_am'] = 0;
-							$times['pm'] = date('H:i:s',$start);
-							$times['mpc_pm'] = $stall;
+		if($data) {
+			foreach($data as $cow) {
+				if($prev && $cow['stall_'.$milking]>0 AND $prev['stall_'.$milking]>0 AND $cow[$milking] != '' AND $prev[$milking]!='') {
+					if($cow['stall_'.$milking]>$prev['stall_'.$milking]) $gap = $cow['stall_'.$milking]-$prev['stall_'.$milking];
+					else $gap = $prev['stall_'.$milking] - 40 + $cow['stall_'.$milking];
+					if($gap > 1 && $gap <= 5) {
+						$end = strtotime($cow[$milking]);
+						$start = strtotime($prev[$milking]);
+						$timespan = $end-$start;
+						$timing = $timespan/$gap;
+						//echo $gap.' stalls gap here, time gap '.$timespan.' = '.$timing.'<br />';
+						for($i=1;$i < $gap;$i++) {
+							$start = $start + $timing;
+							$stall = $prev['stall_'.$milking] + $i;
+							if($stall >= 41) $stall = 1;
+							//echo $stall.' '.date('H:i:s',$start).' FILLED<br />';
+							if($milking=='am') {
+								$times['am'] = date('H:i:s',$start);
+								$times['mpc_am'] = $stall;
+								$times['pm'] = '';
+								$times['mpc_pm'] = 0;
+							} else {
+								$times['am'] = '';
+								$times['mpc_am'] = 0;
+								$times['pm'] = date('H:i:s',$start);
+								$times['mpc_pm'] = $stall;
+							}
+							$this->insertMilkingTime(0,date('Y-m-d'),$times['am'],'',$times['pm'],'',$times['mpc_am'],$times['mpc_pm']);
+							unset($times);
 						}
-						$this->insertMilkingTime(0,date('Y-m-d'),$times['am'],'',$times['pm'],'',$times['mpc_am'],$times['mpc_pm']);
-						unset($times);
-					}
-				}	
+					}	
+				}
+				//echo $cow['stall_'.$milking].' '.$cow[$milking].' '.$cow['cow'].'<br />';
+				$prev = $cow;
 			}
-			//echo $cow['stall_'.$milking].' '.$cow[$milking].' '.$cow['cow'].'<br />';
-			$prev = $cow;
 		}
 	}
 	

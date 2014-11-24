@@ -21,8 +21,12 @@ switch($_GET['a']) {
 	$alpro->uniform->neosporaCows();
 	break;
 	
-	case 'weightAnalysis':
-	$alpro->uniform->weightAnalysis('2014-05-01');
+	case 'fertilityQuickview':
+	$alpro->uniform->fertilityQuickview();
+	break;
+	
+	case 'weightChangeAnalysis':
+	$alpro->uniform->weightChangeAnalysis('2014-11-19');
 	break;
 	
 	case 'estrotectCamLatest':
@@ -31,7 +35,8 @@ switch($_GET['a']) {
 	break;
 	
 	case 'estrotectCam':
-	$alpro->estrotectCam();
+	if(isset($_GET['offset'])) $alpro->estrotectCam($_GET['offset']);
+	else $alpro->estrotectCam();
 	break;
 	
 	case 'estrotectCamImage':
@@ -54,6 +59,14 @@ switch($_GET['a']) {
 	$alpro->uniform->gestationLength('2013-01-01','2014-04-01');
 	break;
 
+	case "calvingWeightAnalysis":
+	$alpro->uniform->calvingWeightAnalysis('2014-07-07','2014-09-31');
+	break;
+	
+	case "criticalWeightLossAlert":
+	echo $alpro->uniform->criticalWeightLossAlert('2014-11-16');
+	break;
+	
 	case 'conception':
 	echo '<h1>2014</h1>';
 	$alpro->uniform->conceptionRate('2014-03-01','2014-06-05');
@@ -76,9 +89,9 @@ switch($_GET['a']) {
 		foreach($data as $line) {
 			$row = explode(',',$line);
 			if(substr($row[0],0,2) != 'UK') $row[0] = 'UK'.$row[0];
-			//$date,$time,$earnumber,$weight)
-			//VID,EID,Weight,Date,Time,Weight Gain
-			if($alpro->uniform->importWeight($row[3],$row[4],$row[0],$row[2]) !== false) $count++;
+			//importWeight($date,$time,$earnumber,$weight)
+			//VID	EID	Date	Time	Weight	Gain
+			if($alpro->uniform->importWeight($row[2],$row[3],$row[0],$row[4]) !== false) $count++;
 		}
 		echo $count.' weights imported';
 	} else {
@@ -100,8 +113,8 @@ switch($_GET['a']) {
 		foreach($data as $item) echo '<td>'.$item.'</td>';
 		echo '</tr>';
 	}
-	echo '<tr><th>2014</th>';
-	$prediction = $alpro->uniform->kpi_expectedBlockStats('2013-10-01','2013-12-31');
+	echo '<tr><th>2015 Spring</th>';
+	$prediction = $alpro->uniform->kpi_expectedBlockStats('2014-04-01','2014-07-01');
 	foreach($prediction as $item) echo '<th>'.$item.'</th>';
 	echo '</tr>';
 	echo '</table>';
@@ -158,7 +171,7 @@ switch($_GET['a']) {
 	break;
 	
 	case 'test':
-	//$alpro->uniform->importAlproWeights('2014-06-09');
+	$alpro->uniform->importWeight('2014-11-24','15:00:00','UK282733101406','500');
 	break;
 	
 	case 'twins':
@@ -296,13 +309,13 @@ switch($_GET['a']) {
 	
 	case 'kpi_pregs_week':
 	$start = microtime();
-	$by_week['2013'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-31');
+	$by_week['2013'] = $alpro->uniform->kpi_pregnant_by_week('2013-04-07','2013-07-01');
 	$section[] = microtime(true);
-	$by_week['2012'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-31');
+	$by_week['2014'] = $alpro->uniform->kpi_pregnant_by_week('2014-04-07','2014-07-01');
 	$section[] = microtime(true);
-	$by_week['2013 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-31',true);
+	//$by_week['2013 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-31',true);
 	$section[] = microtime(true);
-	$by_week['2012 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-31',true);
+	//$by_week['2012 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-31',true);
 	$section[] = microtime(true);
 	foreach($section as $time) {
 		//echo $time - $start.'<br />';
@@ -568,7 +581,7 @@ switch($_GET['a']) {
 	$recent = $alpro->uniform->recentFootTrimmings();
 	if(!isset($_POST['routine']) OR $_POST['routine']!='checked') $routine = false;
 	else $routine = true;
-	if(!isset($_POST['days'])) $days = 180;
+	if(!isset($_POST['days'])) $days = 360;
 	else $days = $_POST['days'];
 	if(!isset($_POST['routine_limit'])) $routine_limit = false;
 	else $routine_limit = $_POST['routine_limit'];

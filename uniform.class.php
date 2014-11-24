@@ -98,6 +98,15 @@ class uniform {
 		echo $count.' imported.';
 	}
 	
+	function fertilityQuickview() {
+		$eligible = $this->eligibleToServe('2014-10-30',0,true);
+		$served = $this->odbcFetchRow("SELECT count(DIERID) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN >= '2014-10-30' GROUP BY DIERID");
+		$served_per_day = $this->odbcFetchAll("SELECT DATUMBEGIN,COUNT(DIERID) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN >= '2014-10-30' GROUP BY DATUMBEGIN");
+		print_r($served_per_day);
+		echo $eligible.' eligible to serve at start of block<br />';
+		print_r($eligible);
+	}
+	
 	
 	function fertilityBreakdown() {
 		$data['round_year'] = $this->odbcFetchRow("SELECT count(*) FROM DIER WHERE (status=2 OR status=3 OR status=4 OR status=7) AND LAATSTEKALFDATUM < '2012-01-01'");
@@ -182,7 +191,7 @@ class uniform {
 		return $drys;
 	}
 	
-	function dueEachWeek($start='2014-01-01') {
+	function dueEachWeek($start='2014-08-01') {
 		$start = strtotime($start);
 		// Go forward one year
 		$end = $start + 31536000;
@@ -242,14 +251,82 @@ class uniform {
 		include 'templates/weightAnalysisGraph.htm';
 	}
 	
+	// Analyse cow weight change in early lactation
+	// Take a start date and look up all the cows which calved that week
+	// See the weight loss by the 7th/14th and 21st day post calving
+	// Compared with the first weight available after calving
+	function calvingWeightAnalysis( $start,$end) {
+		$begin = date("Y-m-d",strtotime($start));
+		$end = date("Y-m-d",strtotime($end));
+		$data = $this->odbcFetchAll("SELECT * FROM DIER WHERE LAATSTEKALFDATUM >= '".$begin."' AND LAATSTEKALFDATUM <= '".$end."' ORDER BY NUMMER ASC");
+		$count = 0;
+		echo '<table border="1">';
+		foreach($data as $id => $cow) {
+			$calved = strtotime($cow['LAATSTEKALFDATUM']);
+			$first = date("Y-m-d",$calved + 604800);
+			$second = date("Y-m-d",$calved + 604800 + 604800);
+			$third = date("Y-m-d",$calved + 604800 + 604800 + 604800);
+			$start = $this->odbcFetchRow("SELECT FIRST 1 GEWICHT,DATUM FROM DIER_GEWICHT WHERE DIERID = ".$cow['DIERID']." AND DATUM >= '".$cow['LAATSTEKALFDATUM']."' AND DATUM < '".$first."' ORDER BY DATUM ASC");
+			$fst = $this->odbcFetchRow("SELECT FIRST 1 GEWICHT,DATUM FROM DIER_GEWICHT WHERE DIERID = ".$cow['DIERID']." AND DATUM >= '".$first."' AND DATUM < '".$second."' ORDER BY DATUM ASC");
+			$snd = $this->odbcFetchRow("SELECT FIRST 1 GEWICHT,DATUM FROM DIER_GEWICHT WHERE DIERID = ".$cow['DIERID']." AND DATUM >= '".$second."' AND DATUM < '".$third."' ORDER BY DATUM ASC");
+			$trd = $this->odbcFetchRow("SELECT FIRST 1 GEWICHT,DATUM FROM DIER_GEWICHT WHERE DIERID = ".$cow['DIERID']." AND DATUM >= '".$third."' ORDER BY DATUM ASC");
+			if($start['GEWICHT'] != false && $fst['GEWICHT'] != false && $snd['GEWICHT'] != false && $trd['GEWICHT'] != false) {
+				echo '<tr><td>'.$cow['NUMMER'].'</td>';
+				echo '<td>'.$start['GEWICHT'].'</td><td>'.$fst['GEWICHT'].'</td><td>'.$snd['GEWICHT'].'</td><td>'.$trd['GEWICHT'].'</td>';
+				echo '<td>'.round(($fst['GEWICHT'] - $start['GEWICHT'])/$start['GEWICHT']*100,1).'%</td>';
+				echo '<td>'.round(($snd['GEWICHT'] - $start['GEWICHT'])/$start['GEWICHT']*100,1).'%</td>';
+				echo '<td>'.round(($trd['GEWICHT'] - $start['GEWICHT'])/$start['GEWICHT']*100,1).'%</td>';
+			}
+			echo '</tr>';
+		}
+	}
+	
+	function criticalWeightLossAlert($date) {
+		$date = strtotime($date);
+		$data = $this->odbcFetchAll("SELECT * FROM DIER_GEWICHT WHERE DATUM = '".date('Y-m-d',$date)."'");
+		$alerts = '';
+		foreach($data as $cow) {
+			$five_day = $this->odbcFetchRow("SELECT FIRST 1 GEWICHT,DATUM FROM DIER_GEWICHT WHERE DIERID = ".$cow['DIERID']." AND DATUM >= '".date('Y-m-d',$date - 432000)."' ORDER BY DATUM ASC");
+			if($five_day != false) {
+				$loss = ($five_day['GEWICHT'] - $cow['GEWICHT']) / $five_day['GEWICHT'];
+				if($loss >= 0.05) $alerts .= $this->earNumberFromDierID($cow['DIERID']).' '.round($loss*100,1)."% bodyweight loss\n";
+			}
+		}
+		if($alerts=='') return false;
+		else return $alerts;
+	}
+	
+	function weightChangeAnalysis($date) {
+		$date = strtotime($date);
+		$data = $this->odbcFetchAll("SELECT * FROM DIER_GEWICHT WHERE DATUM = '".date('Y-m-d',$date)."'");
+		$cows = array();
+		$sum = 0;
+		foreach($data as $cow) {
+			$five_day = $this->odbcFetchRow("SELECT FIRST 1 GEWICHT,DATUM FROM DIER_GEWICHT WHERE DIERID = ".$cow['DIERID']." AND DATUM >= '".date('Y-m-d',$date - 432000)."' ORDER BY DATUM ASC");
+			if($five_day != false) {
+				$change = ($cow['GEWICHT'] - $five_day['GEWICHT']) / $five_day['GEWICHT'];
+				$sum+= $change*100;
+				$cows[$this->earNumberFromDierID($cow['DIERID'])] = round($change*100,3);
+			}
+		}
+		asort($cows);
+		$count = count($cows);
+		echo 'Average Change = '.round($sum/$count,3).'%<br />';
+		foreach($cows as $cow => $change) {
+			echo $cow.' '.$change.'%<br />';
+		}
+	}
+	
+	
+	
 	// Import 5 Day Average Weight
 	function importAlproWeights($date) {
-		$data = $this->alpro->odbcFetchAll("select avg(weight) as avg_weight,CowNo,stDev(weight) as stdev,count(weight) as weights FROM TblCowWeight where SessionDateTime>=#".date('Y-m-d',strtotime($date)-432000)."# AND SessionDateTime<=#".date('Y-m-d',strtotime($date))."# GROUP BY CowNo ORDER BY CowNo ASC");
+		$data = $this->alpro->odbcFetchAll("select avg(weight) as avg_weight,CowNo,stDev(weight) as stdev,count(weight) as weights FROM TblCowWeight where SessionDateTime>=#".date('Y-m-d',strtotime($date)-259200)."# AND SessionDateTime<=#".date('Y-m-d',strtotime($date))."# GROUP BY CowNo ORDER BY CowNo ASC");
 		foreach($data as $cow) {
 			$earnumber = $this->earNumberFromNumber($cow['CowNo']);
 			$time = gmdate("H:i:s");
 			$weight = round($cow['avg_weight'],0);
-			if($cow['weights'] > 5) {
+			if($cow['weights'] > 3) {
 				//echo "$date $time $earnumber $weight ".$cow['stdev']." ".$cow['weights']."\n";
 				$this->importWeight($date,$time,$earnumber,$weight);
 			}
@@ -296,6 +373,7 @@ class uniform {
 				$date = explode('/',$line[1]);
 				$date = $date[2].'-'.$date[1].'-'.$date[0];
 				if($cow) {
+					/*
 					$query = "SELECT DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING,DIER_ZIEKTE.CODEZIEKTE FROM DIER_ZIEKTE JOIN DIER ON DIER_ZIEKTE.DIERID=DIER.DIERID WHERE CODEZIEKTE=".$condition['CODEZIEKTE']." AND DIER_ZIEKTE.DIERID=".$cow." AND DATUMZIEKTE = '".$date."' AND STATUS < 9";
 					$exists = $this->odbcFetchRow($query);
 					echo $line[0];
@@ -308,10 +386,12 @@ class uniform {
 						} else echo ' Leaving as '.$exists['TOELICHTING'].'<br />';
 					} else {
 						// Insert
-						$query = "INSERT INTO DIER_ZIEKTE (DIERID,CODEZIEKTE,DATUMZIEKTE,TOELICHTING) VALUES ('".$cow."','".$condition['CODEZIEKTE']."','".$date."','".$line[2]."')";
+						*/
+						$DIER_ZIEKTE_ID = $this->odbcFetchRow('SELECT next value for GEN_DIER_ZIEKTE_ID FRom RDB$DATABASE');
+						$query = "INSERT INTO DIER_ZIEKTE (DIER_ZIEKTE_ID,DIERID,CODEZIEKTE,DATUMZIEKTE,TOELICHTING) VALUES ('".$DIER_ZIEKTE_ID['GEN_ID']."','".$cow."','".$condition['CODEZIEKTE']."','".$date."','".$line[2]."')";
 						odbc_exec($this->unidb,$query);
 						echo ' Inserting '.$line[2].' in to DB<br />'.$query.'<br />';
-					}
+					//}
 				}
 			}
 		}
@@ -492,10 +572,10 @@ class uniform {
 		$shoe = $this->lookupTreatment('Hoof Shoe');
 		$shoe = $shoe['CODEBEHANDELING'];
 		$cows = array();
-		$due = $this->odbcFetchAll("SELECT DIER.NUMMER,DIER.DIERID,DIER_BEHANDELING.DATUMZIEKTE FROM DIER_BEHANDELING JOIN DIER ON DIER_BEHANDELING.DIERID=DIER.DIERID WHERE (CODEBEHANDELING=".$block." OR CODEBEHANDELING=".$shoe.") AND DATUMZIEKTE < '".date('Y/m/d',strtotime('-5 weeks'))."' AND DIER.STATUS < 8");
+		$due = $this->odbcFetchAll("SELECT DIER.NUMMER,DIER.DIERID,DIER_BEHANDELING.DATUMBEHANDELING FROM DIER_BEHANDELING JOIN DIER ON DIER_BEHANDELING.DIERID=DIER.DIERID WHERE (CODEBEHANDELING=".$block." OR CODEBEHANDELING=".$shoe.") AND DATUMBEHANDELING < '".date('Y/m/d',strtotime('-5 weeks'))."' AND DIER.STATUS < 8");
 		if($due) {
 			foreach($due as $cow) {
-				$trimmed = $this->odbcFetchAll("SELECT DIER.NUMMER,DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING,DIER_ZIEKTE.CODEZIEKTE FROM DIER_ZIEKTE JOIN DIER ON DIER_ZIEKTE.DIERID=DIER.DIERID WHERE DIER.DIERID='".$cow['DIERID']."' AND CODEZIEKTE=".$trim." AND DATUMZIEKTE > '".$cow['DATUMZIEKTE']."'");
+				$trimmed = $this->odbcFetchAll("SELECT DIER.NUMMER,DIER_ZIEKTE.DATUMZIEKTE,DIER_ZIEKTE.TOELICHTING,DIER_ZIEKTE.CODEZIEKTE FROM DIER_ZIEKTE JOIN DIER ON DIER_ZIEKTE.DIERID=DIER.DIERID WHERE DIER.DIERID='".$cow['DIERID']."' AND CODEZIEKTE=".$trim." AND DATUMZIEKTE > '".$cow['DATUMBEHANDELING']."'");
 				if(!$trimmed) $cows[] = $cow['NUMMER'];
 			}
 		}
@@ -549,26 +629,30 @@ class uniform {
 	}
 	
 	function panelStatus($number) {
-		$data = $this->odbcFetchRow("SELECT * FROM DIER WHERE DIER.STATUS < 9 AND NUMMER = ".$number);
-		if($data) {
-			$cow['cow'] = $data['NUMMER'];
-			$cow['name'] = $data['NAAM'];
-			$cow['status'] = $this->config['status'][$data['STATUS']];
-			$cow['dim'] = round((time() - strtotime($data['LAATSTEKALFDATUM'])) / 86400,0);
-			$cow['johnes'] = $this->cowJohnesStatus($number);
-			if(strtotime($data['LAATSTEINSDATUM']) > strtotime($data['LAATSTETOCHTDATUM'])) {
-				$cow['heat'] = $data['LAATSTEINSDATUM'];
-				$sire_name = $this->odbcFetchRow("SELECT NAAM FROM DIER WHERE DIERID = ".$data['LAATSTEINSID']);
-				if($sire_name) $cow['bull'] = $sire_name['NAAM'];
-				else $sire_name = false;
-			} else {
-				$cow['heat'] = $data['LAATSTETOCHTDATUM'];
-				$cow['bull'] = false;
-			}
-			if(strtotime($cow['heat']) != 0) $cow['SinceHeat'] = round((strtotime('1am') - strtotime($cow['heat'].' 1am')) / 86400,0);
-			else $cow['SinceHeat'] = false;
-		} else $cow['cow'] = $number;
-		return $cow;
+		if(isset($this->panelStatus[$number])) return $this->panelStatus[$number];
+		else {
+			$data = $this->odbcFetchRow("SELECT * FROM DIER WHERE DIER.STATUS < 9 AND NUMMER = ".$number);
+			if($data) {
+				$cow['cow'] = $data['NUMMER'];
+				$cow['name'] = $data['NAAM'];
+				$cow['status'] = $this->config['status'][$data['STATUS']];
+				$cow['dim'] = round((time() - strtotime($data['LAATSTEKALFDATUM'])) / 86400,0);
+				$cow['johnes'] = $this->cowJohnesStatus($number);
+				if(strtotime($data['LAATSTEINSDATUM']) > strtotime($data['LAATSTETOCHTDATUM'])) {
+					$cow['heat'] = $data['LAATSTEINSDATUM'];
+					$sire_name = $this->odbcFetchRow("SELECT NAAM FROM DIER WHERE DIERID = ".$data['LAATSTEINSID']);
+					if($sire_name) $cow['bull'] = $sire_name['NAAM'];
+					else $sire_name = false;
+				} else {
+					$cow['heat'] = $data['LAATSTETOCHTDATUM'];
+					$cow['bull'] = false;
+				}
+				if(strtotime($cow['heat']) != 0) $cow['SinceHeat'] = round((strtotime('1am') - strtotime($cow['heat'].' 1am')) / 86400,0);
+				else $cow['SinceHeat'] = false;
+			} else $cow['cow'] = $number;
+			$this->panelStatus[$number] = $cow;
+			return $cow;
+		}
 	}
 	
 	function dierid($cow) {
@@ -965,7 +1049,8 @@ class uniform {
 		if($dier) $dierid = $dier['DIERID'];
 		else return false;
 		if($weight > 0 AND $weight < 2000) {
-			if(odbc_exec($this->unidb,"INSERT INTO DIER_GEWICHT (DIERID,DATUM,TIJDSTIPMETING,GEWICHT,SOURCEID) VALUES (".$dierid.",'".date('Y-m-d',strtotime($date))."','".$time."',".$weight.",'100102')")!== false) return true;
+			$DIER_GEWICHT_ID = $this->odbcFetchRow('SELECT next value for GEN_DIER_GEWICHT_ID FRom RDB$DATABASE');
+			if(odbc_exec($this->unidb,"INSERT INTO DIER_GEWICHT (DIER_GEWICHT_ID,DIERID,DATUM,TIJDSTIPMETING,GEWICHT,SOURCEID) VALUES (".$DIER_GEWICHT_ID['GEN_ID'].",".$dierid.",'".date('Y-m-d',strtotime($date))."','".$time."',".$weight.",'100102')")!== false) return true;
 			else return false;
 		}
 	}
@@ -999,6 +1084,7 @@ class uniform {
 			$return[$begin]['eligible'] = count($eligible);
 			$return[$begin]['served'] = 0;
 			$served = $this->odbcFetchAll("SELECT * FROM DIER_VOORTPLANTING WHERE VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 AND DATUMBEGIN <= '".$end."' AND DATUMBEGIN >= '".$begin."'");
+			echo count($served);
 			foreach($eligible as $cow) {
 				foreach($served as $id => $served_cow) {
 					if($cow == $served_cow['DIERID']) {
@@ -1245,7 +1331,7 @@ class uniform {
 	}
 	
 	function cowTreatment($treatment,$cow,$start,$end) {
-		return $this->odbcFetchAll("SELECT * FROM DIER_BEHANDELING WHERE DATUMZIEKTE > '".$start."' AND DATUMZIEKTE < '".$end."' AND DIERID = ".$cow." AND CODEBEHANDELING = ".$treatment);
+		return $this->odbcFetchAll("SELECT * FROM DIER_BEHANDELING WHERE DATUMBEHANDELING > '".$start."' AND DATUMBEHANDELING < '".$end."' AND DIERID = ".$cow." AND CODEBEHANDELING = ".$treatment);
 	}
 	
 	function cowHealth($condition,$cow,$start,$end) {

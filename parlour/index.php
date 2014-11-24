@@ -81,6 +81,10 @@ switch($_GET['a']) {
 	include 'milking_panel.htm.php';
 	break;
 	
+	case "milk_records":
+	include 'panel_recordings.htm.php';
+	break;
+	
 	case 'cowstatus':
 	include '../templates/header.htm';
 	if(isset($_GET['cow'])) $data =	$alpro->cowStatus($_GET['cow']);
