@@ -81,6 +81,19 @@ switch($_GET['a']) {
 	include 'milking_panel.htm.php';
 	break;
 	
+	case 'scanning':
+	if(isset($_POST['cow'])) {
+		if($alpro->uniform->insertPDPositive($_POST['cow'])) $message = 'Successfully inserted PD Positive for '.$_POST['cow'];
+		else $message = 'Failed to insert PD Positive for '.$_POST['cow'];		
+	}
+	$milking_status = $alpro->milkingTotal($alpro->currentMilking());
+	$milking_speed = $alpro->milkingSpeed();
+	$numberCowsInMilk = $alpro->numberCowsInMilk();
+	$data = $alpro->panelScanning();
+	include 'scanning_panel.htm.php';
+	break;
+	
+	
 	case "milk_records":
 	include 'panel_recordings.htm.php';
 	break;

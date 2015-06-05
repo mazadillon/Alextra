@@ -1,6 +1,6 @@
-body { width: 99%; margin: 1px; padding: none; font-size: large;}
+body { width: 99%; margin: 1px; padding: none; font-size: 2em;}
 table { width: 99%; margin: none; padding: none;}
-td { padding: 1%;}
+td { padding: 1%; font-size: 2em;}
 img { border: none;}
 h1 {text-align: center;}
 .open, .unknown, .served, .pregnant, .dry { color: white; font-weight: bold;}
@@ -12,7 +12,7 @@ h1 {text-align: center;}
 .dry { background-color: orange; font-weight: bold;}
 .clock { position: absolute; top: 1px; right: 3px; display:inline; padding: 0px;margin: 0px;}
 .big_clock { font-size: 12em; text-align: center;}
-#tests{font-size:2em; text-align: center;}
+#tests{text-align: center;}
 @page narrow {size: 9cm 18cm}
 @page rotated {size: landscape}
 DIV {page: narrow}

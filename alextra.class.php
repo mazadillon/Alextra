@@ -19,6 +19,7 @@ class alpro {
 	function alpro() {
 		include 'alextra_config.php';
 		$this->config = $config;
+		ini_set('SMTP', $this->config['mail_server']);
 		$this->connect();
 		if(!$this->authenticate()) die('Need to authorise access, ask Matt<br />'.$_COOKIE['pass']);
 		$this->copyLatestMilkingTimes();
@@ -514,14 +515,17 @@ class alpro {
 	}
 	
 	function copyLatestMilkingTimes() {
-		$latest = $this->queryRow("SELECT max( am ) as am, max( pm ) as pm FROM alpro WHERE date = '".date('Y-m-d')."'");
-		if($latest['am'] == '') $latest = '01:00:00';
-		elseif($latest['pm'] == '') $latest = $latest['am'];
-		else $latest = $latest['pm'];
-		$latest = explode(':',$latest);
-		$time = mktime($latest[0],$latest[1],$latest[2]);
-		$this->copyMilkingTimesSince(date('H:i:s',$time-60));
-		return true;
+		if(time() - filemtime('C:\\wamp\\www\\alpro-link.dat') > 4) {
+			touch('C:\\wamp\\www\\alpro-link.dat');
+			$latest = $this->queryRow("SELECT max( am ) as am, max( pm ) as pm FROM alpro WHERE date = '".date('Y-m-d')."'");
+			if($latest['am'] == '') $latest = '01:00:00';
+			elseif($latest['pm'] == '') $latest = $latest['am'];
+			else $latest = $latest['pm'];
+			$latest = explode(':',$latest);
+			$time = mktime($latest[0],$latest[1],$latest[2]);
+			$this->copyMilkingTimesSince(date('H:i:s',$time-60));
+			return true;
+		}
 	}
 	
 	function statusSummary() {
@@ -598,9 +602,10 @@ class alpro {
 		$this->importFromUniform();
 		$this->copyHistoricMilkingTimes();
 		$this->copyActivityData();
-		$this->importDairyDataNML();
+		$this->importDairyDataQuality();
+		$this->importDairyDataCollections();
 		$this->fetchCutIDTimes();
-		if(date('a') == 'pm' && date('H') == '22') {
+		if(date('a') == 'pm' && date('H') == '20') {
 			$this->cullsToAlpro();
 			$this->copyAlproBackups();
 			$this->uniform->checkFeed();
@@ -687,39 +692,42 @@ class alpro {
 	function milkingSpeed() {
 		$milking = $this->currentMilking();
 		$data = $this->fetchRecent($milking,11);
-		$prev = false;
-		$total = 0;
-		$true_total = 0;
-		$true_count = 0;
-		$count = 0;
-		foreach($data as $cow) {
-			//print $cow[$milking].'<Br />';
-			$time = strtotime(date('Y-m-d').' '.$cow[$milking]);
-			if($prev!=false) {
-				$diff = $prev - $time;
-				//echo $diff.' ';
-				if($diff > 3 && $diff < 60) {
-					$total = $total + $diff;
-					$count++;
+		if(!$data) return false;
+		else {
+			$prev = false;
+			$total = 0;
+			$true_total = 0;
+			$true_count = 0;
+			$count = 0;
+			foreach($data as $cow) {
+				//print $cow[$milking].'<Br />';
+				$time = strtotime(date('Y-m-d').' '.$cow[$milking]);
+				if($prev!=false) {
+					$diff = $prev - $time;
+					//echo $diff.' ';
+					if($diff > 3 && $diff < 60) {
+						$total = $total + $diff;
+						$count++;
+					}
+					if($diff > 3) {
+						$true_total = $true_total + $diff;
+						$true_count++;
+					}
 				}
-				if($diff > 3) {
-					$true_total = $true_total + $diff;
-					$true_count++;
-				}
+				$prev = $time;
 			}
-			$prev = $time;
+			if($count > 0) {
+				$seconds = ($total / $count) * 40;
+				$return['platform'] = floor($seconds/60) . ":" . $seconds % 60; 
+				$return['speed'] = round($true_total / $true_count - 1,0);
+				$return['cph'] = round(3600 / $return['speed'],0);
+			} else {
+				$return['platform'] = 0;
+				$return['speed'] = 0;
+				$return['cph'] = 0;
+			}
+			return $return;
 		}
-		if($count > 0) {
-			$seconds = ($total / $count) * 40;
-			$return['platform'] = floor($seconds/60) . ":" . $seconds % 60; 
-			$return['speed'] = round($true_total / $true_count - 1,0);
-			$return['cph'] = round(3600 / $return['speed'],0);
-		} else {
-			$return['platform'] = 0;
-			$return['speed'] = 0;
-			$return['cph'] = 0;
-		}
-		return $return;
 	}
 	
 	
@@ -906,6 +914,24 @@ class alpro {
 	function jogglerServing($delay=120) {
 		$milking = $this->currentMilking();
 		$data = $this->fetchStallOffset($milking);
+		foreach($data as $id => $cow) {
+			$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
+			$data[$id]['milking'] = $milking;
+		}
+		return $data;
+	}
+	
+	function panelScanning() {
+		$milking = $this->currentMilking();
+		$newest = $this->queryOne("SELECT stall_".$milking." FROM alpro WHERE date='".date('Y-m-d')."' ORDER BY ".$milking." DESC");
+		// Get time of stall 15 back from there
+		//echo 'Newest = '.$newest.'<br />';
+		$start_stall = $newest + 5;
+		if($start_stall > 40) $start_stall = $start_stall - 40;
+		//echo 'Start stall = '.$start_stall.'<br />';
+		$start_stall_time = $this->queryOne("SELECT ".$milking." FROM alpro WHERE date='".date('Y-m-d')."' AND stall_".$milking." = ".$start_stall." ORDER BY ".$milking." DESC LIMIT 1");
+		//echo 'Start stall time = '.$start_stall_time.'<br/ >';
+		$data = $this->queryAll("SELECT * FROM ALPRO WHERE date='".date('Y-m-d')."' AND ".$milking." > '".$start_stall_time."' ORDER BY ".$milking." ASC LIMIT 10");
 		foreach($data as $id => $cow) {
 			$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
 			$data[$id]['milking'] = $milking;
@@ -1178,14 +1204,73 @@ class alpro {
 		return $in_milk;
 	}
 	
-	function importDairyDataNML() {
-		$data = json_decode(file_get_contents("http://www.dairydata.org/nml/api.php?key=".$this->config['dairydata']),true);
+	function importDairyDataQuality() {
+		$data = json_decode(file_get_contents("http://www.dairydata.org/nml/api.php?action=quality&key=".$this->config['dairydata']),true);
 		if($data['response'] == 'OK') {
 			foreach($data['data'] as $test) {
 				$query = 'INSERT IGNORE INTO milktests (date,scc,bacto,butter,protein,urea) VALUES ("'.$test['date'].'","'.$test['cell'].'","'.$test['bacto'].'","'.$test['butter'].'","'.$test['protein'].'","'.$test['urea'].'")';
 				mysql_query($query);
 			}
 		}
+	}
+	
+	function importDairyDataCollections() {
+		$data = json_decode(file_get_contents("http://www.dairydata.org/nml/api.php?action=collections&key=".$this->config['dairydata']),true);
+		if($data['response'] == 'OK') {
+			foreach($data['data'] as $test) {
+				$query = "INSERT IGNORE INTO milk_collections (date,time,litres,temp,vat) VALUES ('".$test['date']."','".$test['time']."',".$test['litres'].",".$test['temp'].",".$test['vat'].")";
+				mysql_query($query);
+			}
+		}
+	}
+	
+	function importPtmComponentDailyConsumption($csv_text) {
+		$count = 0;
+		$lines=explode("\n",$csv_text);
+		foreach($lines as $i=>$line) {
+			$lines[$i] = explode(",",str_replace('"','',$line));			
+		}
+		$next=false;
+		foreach($lines as $i =>$line) {
+			if($line[0] == 'Components') {
+				$headers = $lines[$i];
+				unset($headers[0]);
+				$next = true;
+			}
+			elseif($next) {
+				foreach($headers as $j => $date) {
+					$date = date('Y-m-d',strtotime($date));
+					if($line[$j] > 0) {
+						mysql_query("INSERT INTO tmr_items_fed (date,quantity,ingredient) VALUES ('".$date."',".$line[$j].",'".$line[0]."') ON DUPLICATE KEY UPDATE quantity=VALUES(quantity)");
+						$count++;
+					}
+				}
+			}
+			if($line[0] == 'Total') $max = $i;
+		}
+		echo $count.' items saved';
+	}
+	
+	function analyseFeedConsumed($ingredient,$days_back=60) {
+		$cut_off = date('Y-m-d',time() - (86400*$days_back));
+		$data = $this->queryAll("SELECT * FROM tmr_items_fed WHERE ingredient='".mysql_real_escape_string($ingredient)."' AND date >= '".$cut_off."' ORDER BY date DESC");
+		$grand_total = 0;
+		$month_total = 0;
+		$month = false;
+		echo '<h1>'.$ingredient.'</h1>';
+		echo "<table border='1'><tr><th>Date</th><th>Quantity Fed</th></tr>\n";
+		foreach($data as $item) {
+			$m = date('M',strtotime($item['date']));
+			if($month!=false && $month!=$m) {
+				echo '<tr><th>'.$month.'</th><th>'.$month_total."</th></tr>\n";
+				$month_total = 0;
+			}
+			echo '<tr><td>'.$item['date'].'</td><td>'.$item['quantity']."</td></tr>\n";
+			$month = $m;
+			$month_total = $month_total + $item['quantity'];
+			$grand_total = $grand_total + $item['quantity'];
+		}
+		echo "<tr><th>Total</th><th>".$grand_total."</th></tr>\n";
 	}
 		
 	function dashboard() {
