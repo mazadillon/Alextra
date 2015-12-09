@@ -10,7 +10,7 @@ if($data) {
 	foreach($data as $id => $row) {
 		echo '<tr>';
 		echo '<td style="font-size: xx-large;">'.$row['stall'].'.</td>';
-		echo '<td style="font-size: xx-large;">'.$row['cow'].'</td>';
+		echo '<td style="font-size: xx-large;" class="'.strtolower($row['info']['status']).'">'.$row['cow'].'</td>';
 		echo '<td><a href="index.php?a=edit&amp;stamp='.$row['stamp'].'&amp;cow='.$row['cow'].'&amp;stall='.$row['stall'].'"><img src="edit.png" /></a></td>';
 		echo '<td><a href="index.php?a=insert&amp;stamp='.$row['stamp'].'"><img src="add.png" /></a></td>';
 		echo '<td><a href="index.php?a=delete&amp;stamp='.$row['stamp'].'&amp;cow='.$row['cow'].'"><img src="delete.png" /></a></td>';

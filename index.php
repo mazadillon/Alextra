@@ -60,8 +60,24 @@ switch($_GET['a']) {
 	else echo 'No';
 	break;
 	
+	case 'milkRecordingFactoring':
+	if(isset($_POST['data'])) {
+		$data = explode("\n",$_POST['data']);
+		foreach($data as $line) {
+			$line = explode(',',$line);
+			echo $line[0].','.$alpro->milkRecordingFactoring($line[1],$line[2],$line[3]).'<br />';
+		}
+	} else {
+		echo '<form action="index.php?a=milkRecordingFactoring" method="post">';
+		echo '<p>CSV: cow, milking time AM, milking time PM, yield PM</p>';
+		echo '<textarea name="data"></textarea>';
+		echo '<input type="submit" value="Factor" /></form>';
+	}
+	break;
+	
+	
 	case 'gestationLength':
-	$alpro->uniform->gestationLength('2014-01-01','2015-04-01');
+	$alpro->uniform->gestationLength('2014-01-01','2015-10-30');
 	break;
 
 	case "calvingWeightAnalysis":
@@ -73,10 +89,14 @@ switch($_GET['a']) {
 	break;
 	
 	case 'conception':
-	echo '<h1>2014</h1>';
-	$alpro->uniform->conceptionRate('2014-03-01','2014-06-05');
-	echo '<h1>2014 Most Recent</h1>';
-	$alpro->uniform->conceptionRate('2014-05-25','2014-06-05');
+	echo '<h1>2014 Autumn</h1>';
+	$alpro->uniform->conceptionRate('2014-10-01','2015-01-31');
+	echo '<h1>2015 Spring</h1>';
+	$alpro->uniform->conceptionRate('2015-04-15','2015-06-20');
+	break;
+	
+	case 'kpiSubmissionQuartiles':
+	$alpro->uniform->kpiSubmissionQuartiles('2014-10-01');
 	break;
 	
 	case 'batchPDPositive':
@@ -95,7 +115,7 @@ switch($_GET['a']) {
 	break;
 	
 	case 'conceptionByDay':
-	$alpro->uniform->conceptionRateByDay('2014-10-29','2015-01-22');
+	$alpro->uniform->conceptionRateByDay('2015-04-25','2015-07-25');
 	$alpro->uniform->conceptionRateByDay('2013-10-01','2013-10-14');
 	break;
 	
@@ -107,8 +127,12 @@ switch($_GET['a']) {
 	$alpro->uniform->milkRecordingAverage();
 	break;
 	
+	case 'milkRecordingHistory':
+	$alpro->uniform->milkRecordingHistory();
+	break;
+	
 	case 'weightAnalysis':
-	$alpro->uniform->weightAnalysis('2015-05-12');
+	$alpro->uniform->weightAnalysis('2015-10-12');
 	break;
 	
 	case 'cakeAllocationVsMilk':
@@ -159,7 +183,7 @@ switch($_GET['a']) {
 	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
 	foreach($blocks as $block) {
 		$end_date = $block + 1;
-		$data = $alpro->uniform->kpi_expectedBlockStats($block.'-03-01',$block.'-07-01');
+		$data = $alpro->uniform->kpi_expectedBlockStats($block.'-03-01',$block.'-08-01');
 		echo '<tr><td>'.$end_date.'</td>';
 		foreach($data as $item) echo '<td>'.$item.'</td>';
 		echo '</tr>';
@@ -222,7 +246,8 @@ switch($_GET['a']) {
 	case 'test':
 	//$alpro->importData();
 	if(!isset($_GET['month'])) $_GET['month'] = date('Y-m');
-	$alpro->uniform->costingsFeedRate($_GET['month']);
+	//$alpro->uniform->costingsFeedRate($_GET['month']);
+	$alpro->uniform->metChecks();
 	break;
 	
 	case 'importPTM':
@@ -329,7 +354,7 @@ switch($_GET['a']) {
 	
 	case 'dueByWeek':
 	if(!isset($_GET['start'])) {
-		$data = $alpro->uniform->dueEachWeek('2015-01-01');
+		$data = $alpro->uniform->dueEachWeek('2016-01-01');
 		include 'templates/dueeachweek.htm';
 	} else {
 		$data = $alpro->uniform->dueByWeek($_GET['start']);
@@ -339,10 +364,12 @@ switch($_GET['a']) {
 	
 	case 'kpis':
 	$start = microtime(true);
+	$cull['2014'] = $alpro->uniform->kpi_cullage(2014);
 	$cull['2013'] = $alpro->uniform->kpi_cullage(2013);
 	$cull['2012'] = $alpro->uniform->kpi_cullage(2012);
 	$cull['2011'] = $alpro->uniform->kpi_cullage(2011);
 	$section[0] = microtime(true);
+	$sixweeks['2015'] = $alpro->uniform->kpi_preg6weeks('2015-04-25');
 	$sixweeks['2013'] = $alpro->uniform->kpi_preg6weeks('2013-10-01');
 	$sixweeks['2012'] = $alpro->uniform->kpi_preg6weeks('2012-10-01');
 	$sixweeks['2011'] = $alpro->uniform->kpi_preg6weeks('2011-10-01');
@@ -365,11 +392,16 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpi_submissionRates':
-	$sub = $alpro->uniform->kpi_submission('2014-10-28',12);
+	$sub = $alpro->uniform->kpi_submission('2015-04-25',12);
 	//$sub_prev = $alpro->uniform->kpi_submission('2013-10-01',10);
 	include 'templates/kpi_submissionRates.htm';
 	break;
 	
+	case 'kpi_6weeks':
+	$sixweeks['2015'] = $alpro->uniform->kpi_preg6weeks('2015-04-25');
+	print_r($sixweeks['2015']);
+	break;
+
 	case 'kpi_pregs_week':
 	$start = microtime();
 	$by_week['2013'] = $alpro->uniform->kpi_pregnant_by_week('2013-04-07','2013-07-01');

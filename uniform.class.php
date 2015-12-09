@@ -55,15 +55,15 @@ class uniform {
 	function selectiveDryCow($cow) {
 		// Lookup cow
 		$info = $this->cowInfo($cow);
-		// Check SCC < 150 in last 2 years
-		$scc = $this->odbcFetchAll("SELECT * FROM DIER_MELKGIFT_ETMAAL WHERE DIERID='".$info['DIERID']."' AND DATUM >= '".date('Y-m-d',strtotime('-2 years'))."'");
-		if(count($scc) < 10) return false; // There must be at least 10 milk tests
+		// Check SCC < 200 in last year
+		$scc = $this->odbcFetchAll("SELECT * FROM DIER_MELKGIFT_ETMAAL WHERE DIERID='".$info['DIERID']."' AND DATUM >= '".date('Y-m-d',strtotime('-1 years'))."'");
+		if(count($scc) < 3) return false; // There must be at least 3 milk tests
 		else {
-			foreach($scc as $cell) if($cell['AANTALCELLEN'] > 150)	return false; // Check all cell counts
+			foreach($scc as $cell) if($cell['AANTALCELLEN'] > 200)	return false; // Check all cell counts
 			$conditions = array(11,12,13,14,15); // Health conditions for mastitis
 			foreach($conditions as $condition) { // Lookup each condition in turn
-				// For each condition see whether or not the cow has had it in the last 2 years
-				$event = $this->odbcFetchAll("SELECT * FROM DIER_ZIEKTE WHERE DIERID = ".$info['DIERID']." AND DATUMZIEKTE >= '".date('Y-m-d',strtotime('-2 years'))."' AND CODEZIEKTE = ".$condition);
+				// For each condition see whether or not the cow has had it in the last year
+				$event = $this->odbcFetchAll("SELECT * FROM DIER_ZIEKTE WHERE DIERID = ".$info['DIERID']." AND DATUMZIEKTE >= '".date('Y-m-d',strtotime('-1 years'))."' AND CODEZIEKTE = ".$condition);
 				// If they've ever had it, reject them
 				if(isset($event[0]['DIER_ZIEKTE_ID'])) return false;
 			}
@@ -164,13 +164,13 @@ class uniform {
 			// Check each cows cake allocation against protocol for heifers/cows
 			foreach($fresh_cows as $cow) {
 				if(array_key_exists($cow['NUMMER'],$cake_alloc)) {
-					if($cow['LACTATIENUMMER'] == 1 && $cake_alloc[$cow['NUMMER']]['TargetFeed1'] != 7) $flagged[] = $cow['NUMMER'];
-					elseif($cow['LACTATIENUMMER'] > 1 && $cake_alloc[$cow['NUMMER']] != 8) $flagged[] = $cow['NUMMER'];
+					if($cow['LACTATIENUMMER'] == 1 && $cake_alloc[$cow['NUMMER']]['TargetFeed1'] < 6) $flagged[] = $cow['NUMMER'];
+					elseif($cow['LACTATIENUMMER'] > 1 && $cake_alloc[$cow['NUMMER']] < 7) $flagged[] = $cow['NUMMER'];
 				} else $flagged = $cow['NUMMER'];
 			}
 			// Send email if cows flagged up
 			if(!empty($flagged)) {
-				$text = "The following fresh cows do have the standard cake set as a target, i.e. 7kg for heifers and 8kg for cows:\n\n";
+				$text = "The following fresh cows do have the standard cake set as a target, i.e. 6kg for heifers and 7kg for cows:\n\n";
 				sort($flagged);
 				foreach($flagged as $cow) $text .= $cow."\n";
 				mail($this->config['email'],"Fresh Cow Rations",$text);
@@ -191,20 +191,35 @@ class uniform {
 	// Takes an array of dry cows by line number
 	// Check if low SCC
 	function checkDryList($drys) {
+		sort($drys,SORT_NUMERIC);
 		$selective = array("Selective");
 		$non_selective = array("Dry Cow Tube");
 		foreach($drys as $i => $dry) {
 			$dry = trim($dry);
-			// Mark Johnes Cows
-			if($this->cowJohnesStatus($dry)) $non_selective[] = $dry.' Johnes';
-			else {
-				// Look for SCC above 100 or case of mastitis in lactation
-				// Johnes cows are excluded as precaution
-				if($this->selectiveDryCow($dry)) $selective[] = $dry;
-				else $non_selective[] = $dry;
-			}						
+			// Look for SCC above 100 or case of mastitis in lactation
+			if($this->cowJohnesStatus($dry)) $cow = $dry.' Johnes';
+			else $cow = $dry;
+			if($this->selectiveDryCow($dry)) $selective[] = $cow;
+			else $non_selective[] = $cow;					
 		}
 		return array_merge($selective,$non_selective);
+	}
+	
+	function metChecks() {
+		$health_events = array();
+		$cows = array();
+		$numbers = array();
+		$health_events[] = $this->lookupHealthEvent("Metritis");
+		$health_events[] = $this->lookupHealthEvent("Retained Afterbirth");
+		$health_events[] = $this->lookupHealthEvent("Assisted Calving");
+		$health_events[] = $this->lookupHealthEvent("Torn Vagina");
+		$health_events[] = $this->lookupHealthEvent("Prolapse");
+		foreach($health_events as $event) {
+			$cows = array_merge($cows,$this->healthReporting($event['CODEZIEKTE'],'2015-06-01',date('Y-m-d')));
+		}
+		foreach($cows as $cow) if(!in_array($cow['NUMMER'],$numbers)) $numbers[] = $cow['NUMMER'];
+		sort($numbers);
+		foreach($numbers as $cow) echo $cow."<br />\n";
 	}
 	
 	function dueEachWeek($start='2014-08-01') {
@@ -293,6 +308,45 @@ class uniform {
 		echo '<br /><b>Total: '.round(($grand_total/$count)*100,2).'%</b>';
 	}
 	
+	function milkRecordingHistory() {
+		$milk = $this->odbcFetchAll("SELECT * FROM DIER_MELKGIFT_ETMAAL WHERE DATUM >= '".date('Y-m',strtotime('-2 Months'))."-01' ORDER BY DIERID ASC");
+		$cows = array();
+		$dates = array();
+		$cow = false;
+		foreach($milk as $recording) {
+			if($recording['DIERID'] != $cow) {
+				$number = $this->numberFromDierID($recording['DIERID']);
+				if($number > 0)	$current_cow = $this->panelStatus($number);
+				else $current_cow = false;
+			}
+			if(!in_array($recording['DATUM'],$dates)) $dates[] = $recording['DATUM'];
+			if($current_cow) {
+				$cows[$current_cow['cow']][$recording['DATUM']] = $recording;
+			}
+		}
+		sort($dates);
+		ksort($cows);
+		echo '<table border="1"><tr><th>Cow</th>';
+		foreach($dates as $date) echo '<th colspan="3">'.$date.'</th>';
+		echo '</tr>';
+		foreach($cows as $cow => $data) {
+			echo '<tr><th>'.$cow.'</th>';
+			foreach($dates as $date) {
+				if(isset($data[$date])) {
+					if($data[$date]['PCTVET'] == false) {
+						echo '<td colspan="3">'.$data[$date]['HOEVEELHEIDMELK'].'</td>';
+					} else {
+						echo '<td><b>'.$data[$date]['HOEVEELHEIDMELK'].'</b></td>';
+						echo '<td>'.round($data[$date]['PCTVET'],1).'</td>';
+						echo '<td>'.round($data[$date]['PCTEIWIT'],1).'</td>';
+					}
+				} else echo '<td colspan="3">&nbsp;</td>';
+			}
+			echo '</tr>';
+		}
+		echo '</table>';
+	}
+	
 	// Analyse Cake Allocation vs Last Milk Recordings
 	function cakeAllocationVsMilk() {
 		$cake = $this->alpro->odbcFetchAll("SELECT CowNo,TargetFeed1 FROM TblCowFeed");
@@ -300,8 +354,8 @@ class uniform {
 			$dierid = $this->dierid($cow['CowNo']);
 			$milk = $this->odbcFetchAll("SELECT FIRST 2 * FROM DIER_MELKGIFT_ETMAAL WHERE DIERID=".$dierid." ORDER BY DATUM DESC");
 			//HOEVEELHEIDMELK, PCTVET, PCTEIWIT
-			$ms1 = ($milk[0]['HOEVEELHEIDMELK'] * $milk[0]['PCTVET'] / 100) + ($milk[0]['HOEVEELHEIDMELK'] * $milk[0]['PCTEIWIT'] / 100);
-			$ms2 = ($milk[1]['HOEVEELHEIDMELK'] * $milk[1]['PCTVET'] / 100) + ($milk[1]['HOEVEELHEIDMELK'] * $milk[1]['PCTEIWIT'] / 100);
+			//$ms1 = ($milk[0]['HOEVEELHEIDMELK'] * $milk[0]['PCTVET'] / 100) + ($milk[0]['HOEVEELHEIDMELK'] * $milk[0]['PCTEIWIT'] / 100);
+			//$ms2 = ($milk[1]['HOEVEELHEIDMELK'] * $milk[1]['PCTVET'] / 100) + ($milk[1]['HOEVEELHEIDMELK'] * $milk[1]['PCTEIWIT'] / 100);
 			$data[$cow['CowNo']] = array('cake'=>$cow['TargetFeed1'],'ms1'=>$ms1,'ms2'=>$ms2);
 		}
 		foreach($data as $cow => $info) {
@@ -741,6 +795,12 @@ class uniform {
 		else return false;
 	}
 	
+	function numberFromDierID($dierid) {
+		$dier = $this->odbcFetchRow("SELECT NUMMER FROM DIER WHERE DIERID='".$dierid."'");
+		if($dier) return $dier['NUMMER'];
+		else return false;
+	}
+	
 	function earNumberFromNumber($number) {
 		$dier = $this->odbcFetchRow("SELECT LEVENSNUMMER FROM DIER WHERE NUMMER='".$number."' AND STATUS<9");
 		if($dier) return $dier['LEVENSNUMMER'];
@@ -967,30 +1027,42 @@ class uniform {
 		$weeks = 0;
 		echo '<table border="1"><tr><th>Date</th>';
 		foreach($inseminators as $bloke) echo '<td>'.$bloke.'</td>';
-		echo '</tr>';
+		echo '<td>Total</td></tr>';
 		foreach($dates as $name => $data) {
 			$days++;
 			if(!empty($data)) {
 				echo '<tr><td>'.$name.' '.date('D',strtotime($name)).'</td>';
+				$daily_serves = 0;
+				$daily_preg = 0;
 				foreach($inseminators as $bloke) {
 					if(!isset($week[$bloke])) $week[$bloke] = array("served" => 0,"pregnant"=>0);
 					echo '<td>';
 					if(isset($data[$bloke])) {
+						$daily_serves = $daily_serves + $data[$bloke]['served'];
+						$daily_preg = $daily_preg + $data[$bloke]['pregnant'];
 						$week[$bloke]['served'] = $week[$bloke]['served'] + $data[$bloke]['served'];
 						$week[$bloke]['pregnant'] = $week[$bloke]['pregnant'] + $data[$bloke]['pregnant'];
 						echo $data[$bloke]['pregnant'].' / '.$data[$bloke]['served'].' = '.round($data[$bloke]['pregnant']/$data[$bloke]['served']*100,1).'%</td>';
 					} else echo '&nbsp;</td>';
 				}
+				echo '<td>'.$daily_preg.' / '.$daily_serves .' ('.round(($daily_preg/$daily_serves)*100,1).'%)</td>';
 				echo '</tr>';
 			}
 			if($days >= 7) {
 				$weeks++;
 				echo '<tr><th>Week '.$weeks.'</th>';
+				$weekly_served = 0;
+				$weekly_preg = 0;
 				foreach($inseminators as $bloke) {
 					echo '<th>';
-					if(isset($week[$bloke]) && $week[$bloke]['served']> 0) echo $week[$bloke]['pregnant'].' / '.$week[$bloke]['served'].' = '.round($week[$bloke]['pregnant']/$week[$bloke]['served']*100,1).'%</td>';
+					if(isset($week[$bloke]) && $week[$bloke]['served']> 0) {
+						echo $week[$bloke]['pregnant'].' / '.$week[$bloke]['served'].' = '.round($week[$bloke]['pregnant']/$week[$bloke]['served']*100,1).'%</td>';
+						$weekly_preg = $weekly_preg + $week[$bloke]['pregnant'];
+						$weekly_served = $weekly_served + $week[$bloke]['served'];
+					}
 					else echo '&nbsp;</th>';
 				}
+				echo '<td>'.$weekly_preg.' / '.$weekly_served .' ('.round(($weekly_preg/$weekly_served)*100,1).'%)</td>';
 				echo '</tr>';
 				$days = 0;
 				$week = array();
@@ -1017,7 +1089,11 @@ class uniform {
 		$end = date('Y-m-d',strtotime($start)+3628800); // Plus 6 weeks
 		$eligible = $this->eligibleForService($start,$end);
 		$preg = 0;
+		$served = 0;
 		foreach($eligible as $cow) {
+			if($this->odbcFetchAll("SELECT * FROM DIER_VOORTPLANTING WHERE VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 AND DIERID = ".$cow." AND DATUMBEGIN <= '".$end."' AND DATUMBEGIN >= '".$start."'")) {
+				$served++;
+			}
 			if($this->odbcFetchAll("SELECT * FROM DIER_VOORTPLANTING WHERE VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 AND INS_OK = 1 AND DIERID = ".$cow." AND DATUMBEGIN <= '".$end."' AND DATUMBEGIN >= '".$start."'")) {
 				$preg++;
 			}
@@ -1025,6 +1101,7 @@ class uniform {
 		$return['start'] = $start;
 		$return['end'] = $end;
 		$return['eligible'] = count($eligible);
+		$return['served'] = $served;
 		$return['pregnant'] = $preg;
 		return $return;
 	}
@@ -1196,6 +1273,20 @@ class uniform {
 			}
 		}
 		return $return;
+	}
+	
+	function kpiSubmissionQuartiles($start) {
+		$begin = date('Y-m-d',strtotime($start));
+		$eligible = $this->eligibleForService($begin,$begin);
+		$return['start']['eligible'] = count($eligible);
+		$half = round($return['start']['eligible'] / 2,0);
+		$first_quart = round($return['start']['eligible'] / 4,0);
+		$last_quart = round($return['start']['eligible'] * 0.75,0);
+		$return['first'] = $this->odbcFetchRow("SELECT FIRST 1 MIN(DATUMBEGIN) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN >= '".$begin."' AND VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 GROUP BY DIERID ORDER BY MIN(DATUMBEGIN) ASC");
+		$return['first_quart'] = $this->odbcFetchRow("SELECT FIRST 1 SKIP ".$first_quart." MIN(DATUMBEGIN) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN >= '".$begin."' AND VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 GROUP BY DIERID ORDER BY MIN(DATUMBEGIN) ASC");
+		$return['half'] = $this->odbcFetchRow("SELECT FIRST 1 SKIP ".$half." MIN(DATUMBEGIN) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN >= '".$begin."' AND VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 GROUP BY DIERID ORDER BY MIN(DATUMBEGIN) ASC");
+		$return['last_quart'] = $this->odbcFetchRow("SELECT FIRST 1 SKIP ".$last_quart." MIN(DATUMBEGIN) FROM DIER_VOORTPLANTING WHERE DATUMBEGIN >= '".$begin."' AND VOORTPLANTINGCODE > 1 AND VOORTPLANTINGCODE < 6 GROUP BY DIERID ORDER BY MIN(DATUMBEGIN) ASC");
+		print_r($return);
 	}
 	
 	function kpi_scc() {
@@ -1486,7 +1577,7 @@ class uniform {
 	
 	function findTwins() {
 		$cows = array();
-		$twins = $this->odbcFetchAll("SELECT DIER_VOORTPLANTING.*,DIER.NUMMER FROM DIER_VOORTPLANTING JOIN DIER ON DIER_VOORTPLANTING.DIERID=DIER.DIERID WHERE DIER_VOORTPLANTING.DATUMBEGIN >= '2014-03-01' AND DIER_VOORTPLANTING.VOORTPLANTINGCODE=7 AND lower(DIER_VOORTPLANTING.OPMERKING) LIKE '%twins%'");
+		$twins = $this->odbcFetchAll("SELECT DIER_VOORTPLANTING.*,DIER.NUMMER FROM DIER_VOORTPLANTING JOIN DIER ON DIER_VOORTPLANTING.DIERID=DIER.DIERID WHERE DIER_VOORTPLANTING.DATUMBEGIN >= '2014-10-01' AND DIER_VOORTPLANTING.VOORTPLANTINGCODE=7 AND lower(DIER_VOORTPLANTING.OPMERKING) LIKE '%twins%'");
 		foreach($twins as $twin) if(!in_array($twin['NUMMER'],$cows)) $cows[] = $twin['NUMMER'];
 		sort($cows);
 		return $cows;

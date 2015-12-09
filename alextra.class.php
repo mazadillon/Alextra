@@ -220,6 +220,12 @@ class alpro {
 		print_r($this->stalls);
 	}
 	
+	function milkRecordingFactoring($time_am,$time_pm,$yield_pm) {
+		$time_diff = strtotime($time_pm) - strtotime($time_am);
+		$yield_per_sec = $yield_pm / $time_diff;
+		return round($yield_per_sec * 60 * 60 * 24,1);
+	}
+	
 	function fetchCutIDTimes() {
 		$times = $this->odbcFetchAll("SELECT cowNo,LastCutIDTime,LastCutIDTimeSS FROM TblCowB");
 		foreach($times as $cow) {
@@ -261,12 +267,15 @@ class alpro {
 	}
 	
 	function alproSearch($type='DATETIME',$value=false) {
+		$query = "SELECT * FROM TblCow ORDER BY CowNo ASC";		
+		$data = $this->odbcFetchAll($query);
+		print_r($data);
+		/*
 		if($type == 'DATETIME') $value = '#'.$value.'#';
 		$result = odbc_tables($this->odbc) or die(odbc_error());
 		while($row = odbc_fetch_array($result)){
 			//print_r($row);
 			if($row['TABLE_TYPE'] != 'SYSTEM TABLE') {
-			/*
 				echo $row['TABLE_NAME'].'<br />';
 				$cols = odbc_columns($this->odbc, 'alpro', '', $row['TABLE_NAME']);
 				while($col = odbc_fetch_array($cols)) {
@@ -275,11 +284,11 @@ class alpro {
 						if($data) echo $col['COLUMN_NAME'].' = '.$data[$col['COLUMN_NAME']].'<br />';
 					}
 				}
-			*/
 			} else {
 				print_r($row);
 			}
 		}
+		*/
 	}
 	
 	function fixtime($date,$seconds) {
@@ -954,7 +963,13 @@ class alpro {
 			}
 		}
 		if($all) return $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC");
-		else return $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC LIMIT 10");
+		else {
+			$data = $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC LIMIT 10");
+			foreach($data as $i => $row) {
+			 $data[$i]['info'] = $this->uniform->panelStatus($row['cow']);
+			}
+			return $data;
+		}
 	}
 	
 	function manualInsertRecording($cow,$stall,$stamp) {
