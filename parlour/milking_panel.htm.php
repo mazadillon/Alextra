@@ -26,7 +26,12 @@ if((is_array($data) AND (time() - strtotime($latestid) < 3600)) OR $_GET['force'
 			if(isset($row['info']['johnes']) && $row['info']['johnes']) echo '<span style="color:red;"> JOHNES</span>';
 			echo '</td>';
 			echo '<td class="'.strtolower($row['info']['status']).'">'.$row['info']["status"].'</td>';
-			echo '<td>'.$row['info']['dim'].'</td>';
+			echo '<td>'.$row['info']['dim'];
+			if(isset($row['info']['SelectiveDCT'])) {
+				if($row['info']['SelectiveDCT']) echo '<span style="color:white;background-color:green;padding:2px;"> Teat Sealant Only </span>';
+				else echo '<span style="background-color:red;color:white;padding:2px;"> Dry Cow Tubed </span>';
+			}
+			echo '</td>';
 			echo '<td>'.$row['info']['name'].'</td>';
 			if(17 < $row['info']['SinceHeat'] && $row['info']['SinceHeat'] < 23) echo '<td style="background-color:red;color:white;">';
 			else echo '<td>&nbsp;';

@@ -9,8 +9,9 @@ foreach($recent as $date => $no) echo $date.' ('.$no.'), ';
 echo '<br />';
 echo '<input type="checkbox" name="routine" value="checked"';
 if($routine) echo ' checked="true"';
-echo ' /><input type="text" name="days" value="'.$days.'" size="3" /> days routine trim ('.date('d/m/Y',strtotime('-'.$days.' days')).'), limit <input type="text" name="routine_limit" size="3"> #'.$routine_count.'<br />
-<input type="checkbox" name="loco" value="checked"';
+echo ' /><input type="text" name="days" value="'.$days.'" size="3" /> days routine trim ('.date('d/m/Y',strtotime('-'.$days.' days')).'), limit <input type="text" name="routine_limit" size="3"> #'.$routine_count;
+echo ' (Exclude Heifers <input type="checkbox" name="heifers" value="checked" />)<br />';
+echo '<input type="checkbox" name="loco" value="checked"';
 if($loco) echo ' checked="true"';
 echo ' /> Trim after locomotion score #'.$loco_count.'<br />
 <input type="checkbox" name="predry" value="checked"';

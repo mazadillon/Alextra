@@ -8,7 +8,7 @@
         var data = google.visualization.arrayToDataTable([
 		<?php
 			echo "['Year'";
-			foreach($by_week['2012'] as $week => $count) echo ", '".$week."'";
+			foreach($by_week['2015'] as $week => $count) echo ", '".$week."'";
 			echo "]";
 			foreach($by_week as $year => $weeks) {
 				echo ",\n['".$year."'";
@@ -33,7 +33,7 @@
 echo '<p>Historic data is based on calvings, some will have calved early.</p>';
 $count = 1;
 echo '<table border="1"><tr><th>Year</th>';
-foreach($by_week['2013'] as $week) {
+foreach($by_week['2015'] as $week) {
 	echo '<th>'.$count.'</th>';
 	$count++;
 }

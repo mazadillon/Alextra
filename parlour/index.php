@@ -71,10 +71,7 @@ switch($_GET['a']) {
 	$numberCowsInMilk = $alpro->numberCowsInMilk();
 	$latestid = $alpro->latestID();
 	if($numberCowsInMilk['COUNT'] - $milking_status <= 20) {
-		if(time()-strtotime($latestid) > 3600) {
-			include 'panel_recordings.htm.php';
-			exit;
-		} else $cowsLeftToMilk = $alpro->cowsLeftToMilk();
+		$cowsLeftToMilk = $alpro->cowsLeftToMilk();
 	}
 	$data = $alpro->jogglerBasic();
 	$sorted = $alpro->sortedRecent();
@@ -83,8 +80,11 @@ switch($_GET['a']) {
 	
 	case 'scanning':
 	if(isset($_POST['cow'])) {
-		if($alpro->uniform->insertPDPositive($_POST['cow'])) $message = 'Successfully inserted PD Positive for '.$_POST['cow'];
-		else $message = 'Failed to insert PD Positive for '.$_POST['cow'];		
+		$result = explode('#',$_POST['cow']);
+		if($result[1] == 'positive') $pd = true;
+		else $pd=false;
+		if($alpro->uniform->insertPD($result[0],$pd)) $message = 'Successfully inserted PD for '.$result[0];
+		else $message = 'Failed to insert PD for '.$result[0];		
 	}
 	$milking_status = $alpro->milkingTotal($alpro->currentMilking());
 	$milking_speed = $alpro->milkingSpeed();

@@ -26,12 +26,33 @@ switch($_GET['a']) {
 	break;
 	
 	case 'weightChangeAnalysis':
-	$alpro->uniform->weightChangeAnalysis('2014-11-19');
+	$alpro->uniform->weightChangeAnalysis('2016-07-01');
 	break;
 	
 	case 'estrotectCamLatest':
 	if(isset($_GET['brand'])) $alpro->estrotectCamImage("latest-brand.jpg");
 	else $alpro->estrotectCamImage();
+	break;
+	
+	case 'calvingGraph':
+	if(isset($_POST['data'])) {
+		$data = explode("\n",$_POST['data']);
+		$date = strtotime('2015-06-01');
+		$dates = array();
+		foreach($data as $line) {
+			$line = trim($line);
+			if($line != $date) {
+				$date = $line;
+				$dates[$date] = 1;
+			}
+			else $dates[$line]++;
+		}
+		foreach($dates as $date => $count) echo $date.','.$count.'<br />';
+	} else {
+		echo '<form action="index.php?a=calvingGraph" method="post">';
+		echo '<textarea name="data"></textarea>';
+		echo '<input type="submit" value="Process" /></form>';
+	}
 	break;
 	
 	case 'estrotectCam':
@@ -41,6 +62,13 @@ switch($_GET['a']) {
 	
 	case 'estrotectCamImage':
 	$alpro->estrotectCamImage($_GET['image']);
+	break;
+	
+	case 'milkRecordingTimes':
+	$data = $alpro->queryAll("SELECT * FROM milkrecording ORDER BY stamp ASC");
+	foreach($data as $cow) {
+		echo date('H:i:s',$cow['stamp']).' '.$cow['cow'].'<br />';
+	}
 	break;
 	
 	case 'cidrSync':
@@ -69,7 +97,7 @@ switch($_GET['a']) {
 		}
 	} else {
 		echo '<form action="index.php?a=milkRecordingFactoring" method="post">';
-		echo '<p>CSV: cow, milking time AM, milking time PM, yield PM</p>';
+		echo '<p>CSV: cow, milking time AM, milking time PM, yield PM. <b>NO HEADER ROW</b></p>';
 		echo '<textarea name="data"></textarea>';
 		echo '<input type="submit" value="Factor" /></form>';
 	}
@@ -84,19 +112,44 @@ switch($_GET['a']) {
 	$alpro->uniform->calvingWeightAnalysis('2015-01-01','2015-02-25');
 	break;
 	
+	case "jennisData":
+	$alpro->uniform->jennisData('2016-07-01','2016-11-31');
+	break;
+	
 	case "criticalWeightLossAlert":
 	echo $alpro->uniform->criticalWeightLossAlert('2014-11-16');
 	break;
 	
+	case 'fixLizzie':
+	// 63 GENESEMIDDEL Rispoval 4
+	$vax = $alpro->uniform->lookupTreatment('Vaccination');
+	$vax = $vax['CODEBEHANDELING'];
+	$treatments = $alpro->uniform->odbcFetchAll("SELECT * FROM DIER_BEHANDELING WHERE DATUMBEHANDELING = '2015-11-24' AND CODEBEHANDELING = '".$vax."'");
+	$sum = 0;
+	foreach($treatments as $cow) {
+		print $alpro->uniform->earNumberFromDierID($cow['DIERID']);
+		$out = $alpro->uniform->odbcFetchRow("SELECT * FROM DIER_GENEESMIDDEL WHERE DIER_BEHANDELING_ID='".$cow['DIER_BEHANDELING_ID']."' AND CODEGENEESMIDDEL = '63' AND BATCHNO='110889' AND HOEVEELHEIDGENEESMIDDEL < 5");
+		$new = $out['HOEVEELHEIDGENEESMIDDEL'] + 3;
+		$sum = $sum + 3;
+		echo $new.'<br />';
+		$query = "UPDATE DIER_GENEESMIDDEL SET HOEVEELHEIDGENEESMIDDEL = '".$new."' WHERE DIER_BEHANDELING_ID='".$cow['DIER_BEHANDELING_ID']."' AND BATCHNO='110889' AND HOEVEELHEIDGENEESMIDDEL < 5";
+		echo $query;
+		//odbc_exec($alpro->uniform->unidb,$query);
+	}
+	print_r($cow);
+	echo 'Total Addition: '.$sum;
+	break;
+	
 	case 'conception':
-	echo '<h1>2014 Autumn</h1>';
-	$alpro->uniform->conceptionRate('2014-10-01','2015-01-31');
+	echo '<h1>2015 Autumn</h1>';
+	$alpro->uniform->conceptionRate('2015-11-01','2016-01-31');
 	echo '<h1>2015 Spring</h1>';
 	$alpro->uniform->conceptionRate('2015-04-15','2015-06-20');
 	break;
 	
 	case 'kpiSubmissionQuartiles':
-	$alpro->uniform->kpiSubmissionQuartiles('2014-10-01');
+	$alpro->uniform->kpiSubmissionQuartiles('2014-11-01');
+	$alpro->uniform->kpiSubmissionQuartiles('2015-11-01');
 	break;
 	
 	case 'batchPDPositive':
@@ -105,7 +158,7 @@ switch($_GET['a']) {
 		foreach($cows as $cow) {
 			$info = $alpro->uniform->cowInfo($cow);
 			if($info && $info['STATUS'] = 5) {
-				if($alpro->uniform->insertPDPositive($cow)) echo $cow.' marked pregnant<br />';
+				if($alpro->uniform->insertPD($cow,true)) echo $cow.' marked pregnant<br />';
 				else echo 'Error marking '.$cow.' pregnant';
 			}
 		}
@@ -115,8 +168,8 @@ switch($_GET['a']) {
 	break;
 	
 	case 'conceptionByDay':
-	$alpro->uniform->conceptionRateByDay('2015-04-25','2015-07-25');
-	$alpro->uniform->conceptionRateByDay('2013-10-01','2013-10-14');
+	$alpro->uniform->conceptionRateByDay('2015-11-01','2016-01-31');
+	$alpro->uniform->conceptionRateByDay('2014-11-01','2015-01-31');
 	break;
 	
 	case 'milkingWeightAnalysis':
@@ -132,7 +185,7 @@ switch($_GET['a']) {
 	break;
 	
 	case 'weightAnalysis':
-	$alpro->uniform->weightAnalysis('2015-10-12');
+	$alpro->uniform->weightAnalysis('2016-07-01');
 	break;
 	
 	case 'cakeAllocationVsMilk':
@@ -156,21 +209,41 @@ switch($_GET['a']) {
 		echo $count.' weights imported';
 	} else {
 		echo '<h1>Upload Weights From Tru-Test</h1>';
-		echo 'CSV Format: VID,EID,Date,Time,Weight,Comment<br />';
+		echo 'CSV Format: VID,EID,Date YYYY-mm-dd,Time,Weight,Comment<br />';
 		echo 'Header row will be ignored<br />';
 		echo '<form action="index.php?a=importWeights" method="post" enctype="multipart/form-data">';
 		echo 'Tru-Test CSV File: <input type="file" name="csv" /> <input type="submit" name="sent" value="Upload" /></form>';
 	}
 	break;
 	
+	case 'importActivityTags':
+	// Basic CSV
+	// cow, tag
+	if(!isset($_POST['csv'])) {
+		echo 'Format: cow.tag\n<br />';
+		echo '<form action="index.php?a=importActivityTags" method="post"><textarea name="csv"></textarea><input type="submit" value="Import" /></form>';
+	} else {
+		$data = explode("\n",trim($_POST['csv']));
+		$count = 0;
+		foreach($data as $cow) {
+			$cow = explode(".",trim($cow));
+			$return = $alpro->uniform->addActTag($cow[0],$cow[1]);
+			if(!$return) echo $cow[0].' '.$cow[1].' failed<br />';
+			else $count++;
+		}
+		echo $count.' imported';
+	}
+	break;
+
+	
 	case 'kpi_blockStats':
 	echo '<h1>Whole Herd - Autumn</h1>';
 	echo '<p>This is based on service data so will include cows which subsequently aborted</p>';
-	$blocks = array(2014,2013,2012,2011,2010);
+	$blocks = array(2015,2014,2013,2012,2011,2010);
 	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
 	foreach($blocks as $block) {
 		$end_date = $block + 1;
-		$data = $alpro->uniform->kpi_expectedBlockStats($block.'-09-01',$end_date.'-02-01');
+		$data = $alpro->uniform->kpi_expectedBlockStats($block.'-10-01',$end_date.'-02-01');
 		echo '<tr><td>'.$end_date.'</td>';
 		foreach($data as $item) echo '<td>'.$item.'</td>';
 		echo '</tr>';
@@ -179,7 +252,7 @@ switch($_GET['a']) {
 	
 	echo '<h1>Whole Herd - Spring</h1>';
 	echo '<p>This is based on service data so will include cows which subsequently aborted</p>';
-	$blocks = array(2015,2014,2013,2012,2011,2010);
+	$blocks = array(2016,2015,2014,2013,2012,2011,2010);
 	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
 	foreach($blocks as $block) {
 		$end_date = $block + 1;
@@ -193,7 +266,7 @@ switch($_GET['a']) {
 	echo '<hr />Everything below here is based on actual calvings</p>';
 	
 	echo '<h1>Heifers</h1>';
-	$blocks = array(2014,2013,2012,2011,2010);
+	$blocks = array(2016,2015,2014,2013,2012,2011,2010);
 	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
 	foreach($blocks as $block) {
 		$data = $alpro->uniform->kpi_blockStats($block.'-06-01',$block.'-12-31',1);
@@ -203,7 +276,7 @@ switch($_GET['a']) {
 	}
 	echo '</table>';
 	echo '<h1>Second Calvers</h1>';
-	$blocks = array(2014,2013,2012,2011,2010);
+	$blocks = array(2016,2015,2014,2013,2012,2011,2010);
 	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
 	foreach($blocks as $block) {
 		$data = $alpro->uniform->kpi_blockStats($block.'-06-01',$block.'-12-31',2);
@@ -213,7 +286,7 @@ switch($_GET['a']) {
 	}
 	echo '</table>';
 	echo '<h1>Cows (Excluding Heifers)</h1>';
-	$blocks = array(2014,2013,2012,2011,2010);
+	$blocks = array(2016,2015,2014,2013,2012,2011,2010);
 	echo '<table border="1"><tr><th>Year</th><th>Start</th><th>End</th><th>Count</th><th>1<sup>st</sup> Quartile</th><th>Half</th><th>4<sup>th</sup> Quartile</th></tr>';
 	foreach($blocks as $block) {
 		$data = $alpro->uniform->kpi_blockStats($block.'-06-01',$block.'-12-31',"cows");
@@ -244,10 +317,7 @@ switch($_GET['a']) {
 	break;
 	
 	case 'test':
-	//$alpro->importData();
-	if(!isset($_GET['month'])) $_GET['month'] = date('Y-m');
-	//$alpro->uniform->costingsFeedRate($_GET['month']);
-	$alpro->uniform->metChecks();
+	$alpro->uniform->fixLouiseBVD();
 	break;
 	
 	case 'importPTM':
@@ -295,8 +365,9 @@ switch($_GET['a']) {
 	break;
 	
 	case 'checkdrys':
+	include 'templates/header.htm';
 	if(isset($_POST['data'])) {
-		$drys = explode("\n",$_POST['data']);
+		$drys = explode("\n",trim($_POST['data']));
 		$drys = $alpro->uniform->checkDryList($drys);
 		foreach($drys as $dry) echo $dry."<br />\n";
 	}
@@ -314,7 +385,7 @@ switch($_GET['a']) {
 	if(!isset($_GET['limit'])) $limit = 60;
 	else $limit = $_GET['limit'];
 	echo '<h1>Fresh Cow Checks</h1>';
-	echo '<p>Now shows cows which have not been vet checked as OK after 21 days</p>';
+	echo '<p>Now shows cows which have not been vet checked as OK after 21 days, anything over 120DIM is ignored.</p>';
 	echo '<form action="index.php" method="get"><input type="text" name="limit" value="'.$limit.'" />';
 	echo '<input type="hidden" name="a" value="freshCows" /><input type="submit" value="Load" /></form>';
 	$cows = $alpro->uniform->freshCowChecks($limit);
@@ -354,7 +425,7 @@ switch($_GET['a']) {
 	
 	case 'dueByWeek':
 	if(!isset($_GET['start'])) {
-		$data = $alpro->uniform->dueEachWeek('2016-01-01');
+		$data = $alpro->uniform->dueEachWeek('2018-01-01');
 		include 'templates/dueeachweek.htm';
 	} else {
 		$data = $alpro->uniform->dueByWeek($_GET['start']);
@@ -363,27 +434,30 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpis':
+	set_time_limit(250);
 	$start = microtime(true);
+	$cull['2016'] = $alpro->uniform->kpi_cullage(2016);
+	$cull['2015'] = $alpro->uniform->kpi_cullage(2015);
 	$cull['2014'] = $alpro->uniform->kpi_cullage(2014);
 	$cull['2013'] = $alpro->uniform->kpi_cullage(2013);
-	$cull['2012'] = $alpro->uniform->kpi_cullage(2012);
-	$cull['2011'] = $alpro->uniform->kpi_cullage(2011);
 	$section[0] = microtime(true);
-	$sixweeks['2015'] = $alpro->uniform->kpi_preg6weeks('2015-04-25');
-	$sixweeks['2013'] = $alpro->uniform->kpi_preg6weeks('2013-10-01');
-	$sixweeks['2012'] = $alpro->uniform->kpi_preg6weeks('2012-10-01');
-	$sixweeks['2011'] = $alpro->uniform->kpi_preg6weeks('2011-10-01');
+	$sixweeks['2017'] = $alpro->uniform->kpi_preg6weeks('2017-11-01');
+	$sixweeks['2016'] = $alpro->uniform->kpi_preg6weeks('2016-11-01');
+	$sixweeks['2015'] = $alpro->uniform->kpi_preg6weeks('2015-11-01');
+	$sixweeks['2014'] = $alpro->uniform->kpi_preg6weeks('2014-11-01');
 	$section[] = microtime(true);
 	$scc = $alpro->uniform->kpi_scc();
 	$section[] = microtime(true);
 	//$sub = $alpro->uniform->kpi_submission('2013-10-01',12);
 	$section[] = microtime(true);
-	$loc['2011'] = $alpro->uniform->kpi_locomotion('2011-01-01','2011-12-31');
-	$loc['2012'] = $alpro->uniform->kpi_locomotion('2012-01-01','2012-12-31');
+	//$loc['2011'] = $alpro->uniform->kpi_locomotion('2011-01-01','2011-12-31');
+	//$loc['2012'] = $alpro->uniform->kpi_locomotion('2012-01-01','2012-12-31');
 	$section[] = microtime(true);
-	$first['2011'] = $alpro->uniform->kpi_firstService('2011-10-01','2011-12-24');
 	$first['2012'] = $alpro->uniform->kpi_firstService('2012-10-01','2012-12-24');
 	$first['2013'] = $alpro->uniform->kpi_firstService('2013-10-01','2013-12-24');
+	$first['2014'] = $alpro->uniform->kpi_firstService('2014-11-01','2015-01-24');
+	$first['2015'] = $alpro->uniform->kpi_firstService('2015-11-01','2016-01-24');
+	$first['2016'] = $alpro->uniform->kpi_firstService('2016-11-01','2017-01-24');
 	foreach($section as $time) {
 		//echo $time - $start.'<br />';
 		$start = $time;
@@ -392,25 +466,40 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpi_submissionRates':
-	$sub = $alpro->uniform->kpi_submission('2015-04-25',12);
-	//$sub_prev = $alpro->uniform->kpi_submission('2013-10-01',10);
+	$sub = $alpro->uniform->kpi_submission('2015-11-01',12);
+	$sub_prev = $alpro->uniform->kpi_submission('2014-11-01',12);
 	include 'templates/kpi_submissionRates.htm';
 	break;
 	
+	case 'kpiSubmissionCycles':
+	$sub = $alpro->uniform->kpiSubmissionCycles('2017-11-01',4);
+	$sub_prev = $alpro->uniform->kpiSubmissionCycles('2016-11-01',4);
+	include 'templates/kpi_submissionCycles.htm';
+	break;
+	
+	case 'kpiBlockCycleStats':
+	$vwp = 42;
+	$data = $alpro->uniform->kpiBlockCycleStats('2017-11-01',$vwp);
+	$data_prev = $alpro->uniform->kpiBlockCycleStats('2016-11-01',$vwp);
+	include 'templates/kpiBlockCycleStats.htm';
+	break;
+	
 	case 'kpi_6weeks':
-	$sixweeks['2015'] = $alpro->uniform->kpi_preg6weeks('2015-04-25');
-	print_r($sixweeks['2015']);
+	$sixweeks['2016'] = $alpro->uniform->kpi_preg6weeks('2016-11-01');
+	print_r($sixweeks['2016']);
 	break;
 
 	case 'kpi_pregs_week':
 	$start = microtime();
-	$by_week['2013'] = $alpro->uniform->kpi_pregnant_by_week('2013-04-07','2013-07-01');
+	$by_week['2016'] = $alpro->uniform->kpi_pregnant_by_week('2016-11-01','2017-01-31');
+	$by_week['2015'] = $alpro->uniform->kpi_pregnant_by_week('2015-11-01','2016-01-31');
 	$section[] = microtime(true);
-	$by_week['2014'] = $alpro->uniform->kpi_pregnant_by_week('2014-04-07','2014-07-01');
+	$by_week['2014'] = $alpro->uniform->kpi_pregnant_by_week('2014-11-01','2015-01-31');
 	$section[] = microtime(true);
-	//$by_week['2013 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2013-10-01','2013-12-31',true);
+	$by_week['2016 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2016-11-01','2017-01-31',true);
+	$by_week['2015 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2015-11-01','2016-01-31',true);
 	$section[] = microtime(true);
-	//$by_week['2012 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2012-10-01','2012-12-31',true);
+	$by_week['2014 heifers'] = $alpro->uniform->kpi_pregnant_by_week('2014-11-01','2015-01-31',true);
 	$section[] = microtime(true);
 	foreach($section as $time) {
 		//echo $time - $start.'<br />';
@@ -420,14 +509,15 @@ switch($_GET['a']) {
 	break;
 	
 	case 'kpi_heifer_losses':
-	for($i=2001;$i <= date('Y');$i++) {
+	for($i=2010;$i < date('Y');$i++) {
 		$data[$i] = $alpro->uniform->kpi_heifer_losses($i);
 	}
 	include 'templates/kpi_heifer_losses.htm';
 	break;
 	
 	case 'kpi_mastitis_cases':
-	for($i=2010;$i < date('Y');$i++) {
+	set_time_limit(240);
+	for($i=2013;$i < date('Y');$i++) {
 		$data[$i] = $alpro->uniform->kpi_mastitis_cases($i);
 	}
 	include 'templates/kpi_mastitis_cases.htm';
@@ -593,7 +683,7 @@ switch($_GET['a']) {
 	$conditions[] = $alpro->uniform->lookupHealthEvent('Ketosis');
 	$conditions[] = $alpro->uniform->lookupHealthEvent('LDA');
 	$conditions[] = $alpro->uniform->lookupHealthEvent('Lame');
-	$data = $alpro->uniform->calvingQsum('2013-06-01','2013-07-15',30,$conditions);
+	$data = $alpro->uniform->calvingQsum('2016-07-01','2016-10-15',30,$conditions);
 	echo '<table border="1"><tr><th>Cow</th><th>Status</th><th>Calving Date</th><th>Calving Ease</th>';
 	foreach($conditions as $cond) {
 		echo '<th>'.$cond['OMSCHRIJVING'].'</th>';
@@ -682,13 +772,15 @@ switch($_GET['a']) {
 	else $routine_limit = $_POST['routine_limit'];
 	if(!isset($_POST['loco']) OR $_POST['loco']!='checked') $loco = false;
 	else $loco = true;
+	if(!isset($_POST['heifers']) OR $_POST['heifers']!='checked') $heifers = true;
+	else $heifers = false;
 	if(!isset($_POST['predry']) OR $_POST['predry']!='checked') $predry = false;
 	else $predry = true;
 	if(!isset($_POST['recheck']) OR $_POST['recheck']!='checked') $recheck = false;
 	else $recheck = true;
 	if(!isset($_POST['predry_limit'])) $predry_limit = false;
 	else $predry_limit = $_POST['predry_limit'];
-	if($routine) $data = $alpro->uniform->footTrimming($days,$routine_limit);
+	if($routine) $data = $alpro->uniform->footTrimming($days,$routine_limit,$heifers);
 	else $data = array();
 	$routine_count = count($data);
 	if($loco) {

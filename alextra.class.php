@@ -913,7 +913,15 @@ class alpro {
 		elseif(!$data && $buffer) $data = $buffer;
 		if($data) {
 			foreach($data as $id => $cow) {
-				if(!empty($cow['cow'])) $data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
+				if(!empty($cow['cow'])) {
+					$data[$id]['info'] = $this->uniform->panelStatus($cow['cow']);
+					if($data[$id]['info']['status'] == 'Dry' OR ($data[$id]['info']['lactation'] > 1 && $data[$id]['info']['dim'] < 7)) {
+						$data[$id]['info']['SelectiveDCT'] = false;
+						$event = $this->uniform->lookupTreatment("Teat Sealant Only");
+						$selective_dct = $this->uniform->cowTreatment($event['CODEBEHANDELING'],$this->uniform->dierid($data[$id]['info']['cow']),date('Y-m-d',time()-(60*60*24*120)),date('Y-m-d'));
+						if($selective_dct !== false) $data[$id]['info']['SelectiveDCT'] = true;
+					}
+				}
 				$data[$id]['milking'] = $milking;
 			}
 			return $data;
@@ -964,9 +972,10 @@ class alpro {
 		}
 		if($all) return $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC");
 		else {
-			$data = $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC LIMIT 10");
+			$data = $this->queryAll("SELECT * FROM milkrecording ORDER BY stamp DESC LIMIT 20");
 			foreach($data as $i => $row) {
-			 $data[$i]['info'] = $this->uniform->panelStatus($row['cow']);
+				if(is_numeric($row['cow']) && $row['cow'] >= 1) $data[$i]['info'] = $this->uniform->panelStatus($row['cow']);
+				else $data[$i]['info']['status'] = '';
 			}
 			return $data;
 		}

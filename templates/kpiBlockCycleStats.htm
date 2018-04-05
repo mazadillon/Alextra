@@ -1,0 +1,29 @@
+<?php
+echo '<h2>Cycle Stats</h2>';
+echo '<p>Stats per 21 day breeding cycle using a VWP of '.$vwp.'</p>';
+echo '<table border="1"><tr><th>Cycle</th><th>Eligible</th><th>Served</th><th>Submission Rate</th><th>Conception Rate</th><th>Pregnant</th><th>Preg Rate</th></tr>';
+foreach($data as $cycle => $info) {
+	$cycle = $cycle + 1;
+	echo '<tr><td>'.$cycle.'</td><td>'.$info['eligible'].'</td><td>'.$info['served'].'</td><td>';
+	echo round(($info['served'])/$info['eligible']*100,1).'%</td><td>';
+	echo round(($info['pregnant'])/$info['served']*100,1).'%</td>';
+	echo '<td>'.$info['pregnant'].'</td><td>';
+	echo round(($info['pregnant'])/$info['eligible']*100,1).'%</td>';
+	echo '</tr>';
+}
+echo '</table>';
+
+echo '<h2>Prev Year</h2>';
+echo '<table border="1"><tr><th>Cycle</th><th>Eligible</th><th>Served</th><th>Submission Rate</th><th>Conception Rate</th><th>Pregnant</th><th>Preg Rate</th></tr>';
+foreach($data_prev as $cycle => $info) {
+	$cycle = $cycle + 1;
+	echo '<tr><td>'.$cycle.'</td><td>'.$info['eligible'].'</td><td>'.$info['served'].'</td><td>';
+	echo round(($info['served'])/$info['eligible']*100,1).'%</td><td>';
+	echo round(($info['pregnant'])/$info['served']*100,1).'%</td>';
+	echo '<td>'.$info['pregnant'].'</td><td>';
+	echo round(($info['pregnant'])/$info['eligible']*100,1).'%</td>';
+	echo '</tr>';
+}
+echo '</table>';
+
+?>

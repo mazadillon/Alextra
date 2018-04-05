@@ -1,0 +1,19 @@
+<?php
+echo '<h2>Submission Rates</h2>';
+echo '<p>Rates are based on a 21 day cycle, target 90%</p>';
+echo '<table border="1"><tr><th>Cycle</th><th>Eligible</th><th>Served</th><th>Rate</th><th>Not Served</th></tr>';
+foreach($sub as $date => $data) {
+	echo '<tr><td>'.$date.'</td><td>'.$data['eligible'].'</td><td>'.$data['served'].'</td>';
+	echo '<td>'.round(($data['served'])/$data['eligible']*100,1).'%</td><td>';
+	foreach($data['not_served'] as $dier_id) echo $alpro->uniform->numberFromDierID($dier_id).' ';
+	echo '</td></tr>';
+}
+echo '</table>';
+echo '<table border="1"><tr><th>Cycle</th><th>Eligible</th><th>Served</th><th>Rate</th></tr>';
+foreach($sub_prev as $date => $data) {
+	echo '<tr><td>'.$date.'</td><td>'.$data['eligible'].'</td><td>'.$data['served'].'</td>';
+	echo '<td>'.round(($data['served'])/$data['eligible']*100,1).'%</td></tr>';
+}
+echo '</table>';
+?>
+?>
